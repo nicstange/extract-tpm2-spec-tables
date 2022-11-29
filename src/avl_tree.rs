@@ -50,7 +50,7 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
 {
     lb: Option<QueryBound<Q>>,
     ub: Option<QueryBound<Q>>,
-    shall_descend: &'a ShallDescend,
+    shall_descend: ShallDescend,
     stack: Vec<NodeIter<'a, K, T, A>>,
 }
 
@@ -59,7 +59,7 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
 {
     lb: Option<QueryBound<Q>>,
     ub: Option<QueryBound<Q>>,
-    shall_descend: &'a ShallDescend,
+    shall_descend: ShallDescend,
     stack: Vec<NodeIterMut<'a, K, T, A>>,
 }
 
@@ -628,10 +628,10 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
     fn new(root: &'a NodeRef<K, T, A>,
            lb: Option<QueryBound<Q>>,
            ub: Option<QueryBound<Q>>,
-           shall_descend: &'a ShallDescend) -> Self {
+           shall_descend: ShallDescend) -> Self {
         let mut stack = Vec::new();
         if let Some(rn) = &root.node {
-            let ni = rn.iter(&lb, &ub, shall_descend);
+            let ni = rn.iter(&lb, &ub, &shall_descend);
             if let Some(ni) = ni {
                 stack.push(ni);
             }
@@ -651,7 +651,7 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
         while let Some(top) = self.stack.last_mut() {
             match top.next() {
                 Some(NodeIterVal::Child(cn)) => {
-                    if let Some(ni) = cn.iter(&self.lb, &self.ub, self.shall_descend) {
+                    if let Some(ni) = cn.iter(&self.lb, &self.ub, &self.shall_descend) {
                         self.stack.push(ni);
                     }
                 },
@@ -673,10 +673,10 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
     fn new(root: &'a mut NodeRef<K, T, A>,
            lb: Option<QueryBound<Q>>,
            ub: Option<QueryBound<Q>>,
-           shall_descend: &'a ShallDescend) -> Self {
+           shall_descend: ShallDescend) -> Self {
         let mut stack = Vec::new();
         if let Some(rn) = &mut root.node {
-            let ni = rn.iter_mut(&lb, &ub, shall_descend);
+            let ni = rn.iter_mut(&lb, &ub, &shall_descend);
             if let Some(ni) = ni {
                 stack.push(ni);
             }
@@ -696,7 +696,7 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
         while let Some(top) = self.stack.last_mut() {
             match top.next() {
                 Some(NodeIterMutVal::Child(cn)) => {
-                    if let Some(ni) = cn.iter_mut(&self.lb, &self.ub, self.shall_descend) {
+                    if let Some(ni) = cn.iter_mut(&self.lb, &self.ub, &self.shall_descend) {
                         self.stack.push(ni);
                     }
                 },
@@ -737,7 +737,7 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
     pub fn iter<'a, Q: PartialOrd<K>, ShallDescend>
         (&'a self,
          lb: Option<QueryBound<Q>>, ub: Option<QueryBound<Q>>,
-         shall_descend: &'a ShallDescend)
+         shall_descend: ShallDescend)
          -> AugmentedAVLTreeIterator<'a, Q, K, T, A, ShallDescend>
     where for<'b> ShallDescend: Fn(&'b A) -> bool {
         AugmentedAVLTreeIterator::new(&self.root, lb, ub, shall_descend)
@@ -746,7 +746,7 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
     pub fn iter_mut<'a, Q: PartialOrd<K>, ShallDescend>
         (&'a mut self,
          lb: Option<QueryBound<Q>>, ub: Option<QueryBound<Q>>,
-         shall_descend: &'a ShallDescend)
+         shall_descend: ShallDescend)
          -> AugmentedAVLTreeMutIterator<'a, Q, K, T, A, ShallDescend>
     where for<'b> ShallDescend: Fn(&'b A) -> bool {
         AugmentedAVLTreeMutIterator::new(&mut self.root, lb, ub, shall_descend)
@@ -816,27 +816,27 @@ fn test_insert_delete_same() {
         t.insert(0, i, 0, &test_update_aux);
         test_check_node(&t.root);
         assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
-                          Some(QueryBound::Exclusive(1)), &|_a| true).count(),
+                          Some(QueryBound::Exclusive(1)), |_a| true).count(),
                    (i + 1) as usize);
         assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)),
-                              Some(QueryBound::Exclusive(1)), &|_a| true).count(),
+                              Some(QueryBound::Exclusive(1)), |_a| true).count(),
                    (i + 1) as usize);
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, &|_a| true).count(), 128);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, &|_a| true).count(), 128);
+    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 128);
+    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 128);
 
     for i in 0..128 {
         assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), Some((0, i)));
         test_check_node(&t.root);
         assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
-                          Some(QueryBound::Exclusive(1)), &|_a| true).count(),
+                          Some(QueryBound::Exclusive(1)), |_a| true).count(),
                    (127 - i) as usize);
         assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)),
-                              Some(QueryBound::Exclusive(1)), &|_a| true).count(),
+                              Some(QueryBound::Exclusive(1)), |_a| true).count(),
                    (127 - i) as usize);
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, &|_a| true).count(), 0);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, &|_a| true).count(), 0);
+    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
+    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
     assert_eq!(t.root.node.is_none(), true);
 }
 
@@ -848,27 +848,27 @@ fn test_insert_delete_same_rev() {
         t.insert(0, i, 0, &test_update_aux);
         test_check_node(&t.root);
         assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
-                          Some(QueryBound::Exclusive(1)), &|_a| true).count(),
+                          Some(QueryBound::Exclusive(1)), |_a| true).count(),
                    (i + 1) as usize);
         assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)),
-                              Some(QueryBound::Exclusive(1)), &|_a| true).count(),
+                              Some(QueryBound::Exclusive(1)), |_a| true).count(),
                    (i + 1) as usize);
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, &|_a| true).count(), 128);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, &|_a| true).count(), 128);
+    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 128);
+    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 128);
 
     for i in (0..128).rev() {
         assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), Some((0, i)));
         test_check_node(&t.root);
         assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
-                          Some(QueryBound::Exclusive(1)), &|_a| true).count(),
+                          Some(QueryBound::Exclusive(1)), |_a| true).count(),
                    i as usize);
         assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)),
-                              Some(QueryBound::Exclusive(1)), &|_a| true).count(),
+                              Some(QueryBound::Exclusive(1)), |_a| true).count(),
                    i as usize);
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, &|_a| true).count(), 0);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, &|_a| true).count(), 0);
+    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
+    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
     assert_eq!(t.root.node.is_none(), true);
 }
 
@@ -881,55 +881,55 @@ fn test_insert_delete_strided() {
             t.insert(i + j, i + j, 0, &test_update_aux);
             test_check_node(&t.root);
             assert_eq!(t.iter(Some(QueryBound::Inclusive(i + j)),
-                              Some(QueryBound::Exclusive(i + j + 1)), &|_a| true).count(),
+                              Some(QueryBound::Exclusive(i + j + 1)), |_a| true).count(),
                        1);
             assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(i + j)),
-                                  Some(QueryBound::Exclusive(i + j + 1)), &|_a| true).count(),
+                                  Some(QueryBound::Exclusive(i + j + 1)), |_a| true).count(),
                        1);
 
             t.insert(i + 256 + j, i + 256 + j, 0, &test_update_aux);
             test_check_node(&t.root);
             assert_eq!(t.iter(Some(QueryBound::Inclusive(i + 256 + j)),
-                              Some(QueryBound::Exclusive(i + 256 + j + 1)), &|_a| true).count(),
+                              Some(QueryBound::Exclusive(i + 256 + j + 1)), |_a| true).count(),
                        1);
             assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(i + 256 + j)),
-                                  Some(QueryBound::Exclusive(i + 256 + j + 1)), &|_a| true).count(),
+                                  Some(QueryBound::Exclusive(i + 256 + j + 1)), |_a| true).count(),
                        1);
         }
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, &|_a| true).count(), 512);
-    assert_eq!(t.iter(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), &|_a| true).count(), 510);
-    assert_eq!(t.iter(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), &|_a| true).count(), 512);
-    assert_eq!(t.iter(Some(QueryBound::Exclusive(192)), Some(QueryBound::Exclusive(320)), &|_a| true).count(), 127);
-    assert_eq!(t.iter(Some(QueryBound::Inclusive(192)), Some(QueryBound::Inclusive(320)), &|_a| true).count(), 129);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, &|_a| true).count(), 512);
-    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), &|_a| true).count(), 510);
-    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), &|_a| true).count(), 512);
-    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(192)), Some(QueryBound::Exclusive(320)), &|_a| true).count(), 127);
-    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(192)), Some(QueryBound::Inclusive(320)), &|_a| true).count(), 129);
+    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 512);
+    assert_eq!(t.iter(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), |_a| true).count(), 510);
+    assert_eq!(t.iter(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), |_a| true).count(), 512);
+    assert_eq!(t.iter(Some(QueryBound::Exclusive(192)), Some(QueryBound::Exclusive(320)), |_a| true).count(), 127);
+    assert_eq!(t.iter(Some(QueryBound::Inclusive(192)), Some(QueryBound::Inclusive(320)), |_a| true).count(), 129);
+    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 512);
+    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), |_a| true).count(), 510);
+    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), |_a| true).count(), 512);
+    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(192)), Some(QueryBound::Exclusive(320)), |_a| true).count(), 127);
+    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(192)), Some(QueryBound::Inclusive(320)), |_a| true).count(), 129);
 
     for i in (0..256).step_by(4) {
         for j in [0, 2, 3, 1] {
             assert_eq!(t.delete(&(i + j), &|_k, v| *v == i + j, &|_a| true, &test_update_aux), Some((i + j, i + j)));
             test_check_node(&t.root);
             assert_eq!(t.iter(Some(QueryBound::Inclusive(i + j)),
-                              Some(QueryBound::Exclusive(i + j + 1)), &|_a| true).count(),
+                              Some(QueryBound::Exclusive(i + j + 1)), |_a| true).count(),
                        0);
             assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(i + j)),
-                                  Some(QueryBound::Exclusive(i + j + 1)), &|_a| true).count(),
+                                  Some(QueryBound::Exclusive(i + j + 1)), |_a| true).count(),
                        0);
         }
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, &|_a| true).count(), 256);
-    assert_eq!(t.iter(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), &|_a| true).count(), 255);
-    assert_eq!(t.iter(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), &|_a| true).count(), 256);
-    assert_eq!(t.iter(Some(QueryBound::Exclusive(128)), Some(QueryBound::Exclusive(320)), &|_a| true).count(), 64);
-    assert_eq!(t.iter(Some(QueryBound::Inclusive(128)), Some(QueryBound::Inclusive(320)), &|_a| true).count(), 65);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, &|_a| true).count(), 256);
-    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), &|_a| true).count(), 255);
-    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), &|_a| true).count(), 256);
-    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(128)), Some(QueryBound::Exclusive(320)), &|_a| true).count(), 64);
-    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(128)), Some(QueryBound::Inclusive(320)), &|_a| true).count(), 65);
+    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 256);
+    assert_eq!(t.iter(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), |_a| true).count(), 255);
+    assert_eq!(t.iter(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), |_a| true).count(), 256);
+    assert_eq!(t.iter(Some(QueryBound::Exclusive(128)), Some(QueryBound::Exclusive(320)), |_a| true).count(), 64);
+    assert_eq!(t.iter(Some(QueryBound::Inclusive(128)), Some(QueryBound::Inclusive(320)), |_a| true).count(), 65);
+    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 256);
+    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), |_a| true).count(), 255);
+    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), |_a| true).count(), 256);
+    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(128)), Some(QueryBound::Exclusive(320)), |_a| true).count(), 64);
+    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(128)), Some(QueryBound::Inclusive(320)), |_a| true).count(), 65);
 
     for i in (0..256).step_by(4).rev() {
         for j in [0, 2, 3, 1].iter().rev() {
@@ -937,14 +937,14 @@ fn test_insert_delete_strided() {
                        Some((i + 256 + j, i + 256 + j)));
             test_check_node(&t.root);
             assert_eq!(t.iter(Some(QueryBound::Inclusive(i + 256 + j)),
-                              Some(QueryBound::Exclusive(i + 256 + j + 1)), &|_a| true).count(),
+                              Some(QueryBound::Exclusive(i + 256 + j + 1)), |_a| true).count(),
                        0);
             assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(i + 256 + j)),
-                                  Some(QueryBound::Exclusive(i + 256 + j + 1)), &|_a| true).count(),
+                                  Some(QueryBound::Exclusive(i + 256 + j + 1)), |_a| true).count(),
                        0);
         }
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, &|_a| true).count(), 0);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, &|_a| true).count(), 0);
+    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
+    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
     assert_eq!(t.root.node.is_none(), true);
 }
