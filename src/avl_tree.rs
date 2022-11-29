@@ -473,9 +473,9 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
         }
     }
 
-    pub fn delete<IsMatch, ShallDescend, UpdateAux>(&mut self, key: &K,
-                                                    is_match: &IsMatch, shall_descend: &ShallDescend,
-                                                    update_aux: &UpdateAux) -> Option<((K, T), bool)>
+    pub fn delete<Q: PartialOrd<K>, IsMatch, ShallDescend, UpdateAux>(&mut self, key: &Q,
+                                                                      is_match: &IsMatch, shall_descend: &ShallDescend,
+                                                                      update_aux: &UpdateAux) -> Option<((K, T), bool)>
     where
         for<'a> IsMatch: Fn(&'a K, &'a T) -> bool,
         for<'a> ShallDescend: Fn(&'a A) -> bool,
@@ -488,7 +488,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                     return None;
                 }
 
-                if n.key == *key && is_match(&n.key, &n.val) {
+                if *key == n.key && is_match(&n.key, &n.val) {
                     let l = mem::replace(&mut n.left.node, None);
                     match l {
                         None => {
@@ -537,7 +537,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                     }
                 }
 
-                if n.key <= *key {
+                if *key >= n.key {
                     let deleted = n.right.delete(key, is_match, shall_descend, update_aux);
                     if let Some((deleted, height_decreased)) = deleted {
                         if height_decreased {
@@ -723,9 +723,9 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
         self.root.insert(key, val, aux, update_aux);
     }
 
-    pub fn delete<IsMatch, ShallDescend, UpdateAux>(&mut self, key: &K,
-                                                    is_match: &IsMatch, shall_descend: &ShallDescend,
-                                                    update_aux: &UpdateAux) -> Option<(K, T)>
+    pub fn delete<Q: PartialOrd<K>, IsMatch, ShallDescend, UpdateAux>(&mut self, key: &Q,
+                                                                      is_match: &IsMatch, shall_descend: &ShallDescend,
+                                                                      update_aux: &UpdateAux) -> Option<(K, T)>
     where
         for<'a> IsMatch: Fn(&'a K, &'a T) -> bool,
         for<'a> ShallDescend: Fn(&'a A) -> bool,
