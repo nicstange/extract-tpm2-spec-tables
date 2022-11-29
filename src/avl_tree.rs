@@ -73,7 +73,7 @@ impl<K: Ord, T, A> Node<K, T, A> {
     }
 
     fn do_update_aux<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         let left_aux = match &self.left.node {
             None => None,
@@ -84,7 +84,7 @@ impl<K: Ord, T, A> Node<K, T, A> {
             Some(n) => Some(&n.aux),
         };
 
-        update_aux(&mut self.aux, &self.val, left_aux, right_aux);
+        update_aux(&mut self.aux, &self.key, left_aux, right_aux);
     }
 
     fn iter<'a, Q: PartialOrd<K>, ShallDescend>(&'a self,
@@ -225,7 +225,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn rotate_left<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         match &mut self.node {
             None => (),
@@ -273,7 +273,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn rotate_right<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         match &mut self.node {
             None => (),
@@ -320,7 +320,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn rotate_right_left<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         match &mut self.node {
             None => (),
@@ -333,7 +333,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn rotate_left_right<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         match &mut self.node {
             None => (),
@@ -346,7 +346,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn insert<UpdateAux>(&mut self, key: K, val: T, aux: A, update_aux: &UpdateAux) -> bool
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         match &mut self.node {
             None => {
@@ -404,7 +404,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn account_deletion_left<UpdateAux>(&mut self, update_aux: &UpdateAux) -> bool
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         let n = self.node.as_deref_mut().unwrap();
         n.bf = n.bf + 1;
@@ -425,7 +425,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn account_deletion_right<UpdateAux>(&mut self, update_aux: &UpdateAux) -> bool
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         let n = self.node.as_deref_mut().unwrap();
         n.bf = n.bf - 1;
@@ -446,7 +446,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn isolate_first_node<UpdateAux>(&mut self, update_aux: &UpdateAux) -> (Self, bool)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         match &mut self.node {
             None => (Self::new(), false),
@@ -475,44 +475,48 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
 
     pub fn delete<IsMatch, ShallDescend, UpdateAux>(&mut self, key: &K,
                                                     is_match: &IsMatch, shall_descend: &ShallDescend,
-                                                    update_aux: &UpdateAux) -> (bool, bool)
+                                                    update_aux: &UpdateAux) -> Option<((K, T), bool)>
     where
         for<'a> IsMatch: Fn(&'a K, &'a T) -> bool,
         for<'a> ShallDescend: Fn(&'a A) -> bool,
-        for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         match &mut self.node {
-            None => (false, false),
+            None => None,
             Some(n) => {
                 if !shall_descend(&n.aux) {
-                    return (false, false);
+                    return None;
                 }
 
                 if n.key == *key && is_match(&n.key, &n.val) {
                     let l = mem::replace(&mut n.left.node, None);
                     match l {
                         None => {
-                            self.node = mem::replace(&mut n.right.node, None);
-                            return (true, true);
+                            let r = mem::replace(&mut n.right.node, None);
+                            let deleted = mem::replace(&mut self.node, r).unwrap();
+                            let deleted = (deleted.key, deleted.val);
+                            return Some((deleted, true));
                         },
                         Some(_) => {
                             let (mut s, height_decreased) = n.right.isolate_first_node(update_aux);
                             match &mut s.node {
                                 None => {
-                                    self.node = l;
-                                    return (true, true);
+                                    let deleted = mem::replace(&mut self.node, l).unwrap();
+                                    let deleted = (deleted.key, deleted.val);
+                                    return Some((deleted, true));
                                 },
                                 Some(sn) => {
                                     sn.bf = n.bf;
                                     sn.left.node = l;
                                     sn.right.node = mem::replace(&mut n.right.node, None);
                                     sn.do_update_aux(update_aux);
-                                    self.node = s.node;
+                                    let deleted = mem::replace(&mut self.node, s.node).unwrap();
+                                    let deleted = (deleted.key, deleted.val);
                                     if height_decreased {
                                         let height_decreased = self.account_deletion_right(update_aux);
-                                        return (true, height_decreased);
+                                        return Some((deleted, height_decreased));
                                     } else {
-                                        return (true, false);
+                                        return Some((deleted, false));
                                     }
                                 }
                             }
@@ -521,28 +525,32 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                 }
 
                 if *key <= n.key {
-                    let (deleted, height_decreased) = n.left.delete(key, is_match, shall_descend, update_aux);
-                    if deleted && height_decreased {
+                    let deleted = n.left.delete(key, is_match, shall_descend, update_aux);
+                    if let Some((deleted, height_decreased)) = deleted {
+                        if height_decreased {
                         let height_decreased = self.account_deletion_left(update_aux);
-                        return (true, height_decreased);
-                    } else if deleted {
-                        n.do_update_aux(update_aux);
-                        return (true, false);
+                            return Some((deleted, height_decreased));
+                        } else {
+                            n.do_update_aux(update_aux);
+                            return Some((deleted, false));
+                        }
                     }
                 }
 
                 if n.key <= *key {
-                    let (deleted, height_decreased) = n.right.delete(key, is_match, shall_descend, update_aux);
-                    if deleted && height_decreased {
-                        let height_decreased = self.account_deletion_right(update_aux);
-                        return (true, height_decreased);
-                    } else if deleted {
-                        n.do_update_aux(update_aux);
-                        return (true, false);
+                    let deleted = n.right.delete(key, is_match, shall_descend, update_aux);
+                    if let Some((deleted, height_decreased)) = deleted {
+                        if height_decreased {
+                            let height_decreased = self.account_deletion_right(update_aux);
+                            return Some((deleted, height_decreased));
+                        } else {
+                            n.do_update_aux(update_aux);
+                            return Some((deleted, false));
+                        }
                     }
                 }
 
-                (false, false)
+                None
             }
         }
     }
@@ -710,20 +718,20 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
     }
 
     pub fn insert<UpdateAux>(&mut self, key: K, val: T, aux: A, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         self.root.insert(key, val, aux, update_aux);
     }
 
     pub fn delete<IsMatch, ShallDescend, UpdateAux>(&mut self, key: &K,
                                                     is_match: &IsMatch, shall_descend: &ShallDescend,
-                                                    update_aux: &UpdateAux) -> bool
+                                                    update_aux: &UpdateAux) -> Option<(K, T)>
     where
         for<'a> IsMatch: Fn(&'a K, &'a T) -> bool,
         for<'a> ShallDescend: Fn(&'a A) -> bool,
-        for<'a> UpdateAux: Fn(&'a mut A, &'a T, Option<&'a A>, Option<&'a A>)
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
-        self.root.delete(key, is_match, shall_descend, update_aux).0
+        self.root.delete(key, is_match, shall_descend, update_aux).map(|deleted| deleted.0)
     }
 
     pub fn iter<'a, Q: PartialOrd<K>, ShallDescend>
@@ -818,7 +826,7 @@ fn test_insert_delete_same() {
     assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, &|_a| true).count(), 128);
 
     for i in 0..128 {
-        assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), true);
+        assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), Some((0, i)));
         test_check_node(&t.root);
         assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
                           Some(QueryBound::Exclusive(1)), &|_a| true).count(),
@@ -850,7 +858,7 @@ fn test_insert_delete_same_rev() {
     assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, &|_a| true).count(), 128);
 
     for i in (0..128).rev() {
-        assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), true);
+        assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), Some((0, i)));
         test_check_node(&t.root);
         assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
                           Some(QueryBound::Exclusive(1)), &|_a| true).count(),
@@ -902,7 +910,7 @@ fn test_insert_delete_strided() {
 
     for i in (0..256).step_by(4) {
         for j in [0, 2, 3, 1] {
-            assert_eq!(t.delete(&(i + j), &|_k, v| *v == i + j, &|_a| true, &test_update_aux), true);
+            assert_eq!(t.delete(&(i + j), &|_k, v| *v == i + j, &|_a| true, &test_update_aux), Some((i + j, i + j)));
             test_check_node(&t.root);
             assert_eq!(t.iter(Some(QueryBound::Inclusive(i + j)),
                               Some(QueryBound::Exclusive(i + j + 1)), &|_a| true).count(),
@@ -925,7 +933,8 @@ fn test_insert_delete_strided() {
 
     for i in (0..256).step_by(4).rev() {
         for j in [0, 2, 3, 1].iter().rev() {
-            assert_eq!(t.delete(&(i + 256 + j), &|_k, v| *v == i + 256 + j, &|_a| true, &test_update_aux), true);
+            assert_eq!(t.delete(&(i + 256 + j), &|_k, v| *v == i + 256 + j, &|_a| true, &test_update_aux),
+                       Some((i + 256 + j, i + 256 + j)));
             test_check_node(&t.root);
             assert_eq!(t.iter(Some(QueryBound::Inclusive(i + 256 + j)),
                               Some(QueryBound::Exclusive(i + 256 + j + 1)), &|_a| true).count(),
