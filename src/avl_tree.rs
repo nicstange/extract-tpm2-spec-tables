@@ -39,26 +39,20 @@ struct NodeIterMut<'a, K: Ord, T, A> {
     right: Option<&'a mut Node<K, T, A>>,
 }
 
-#[derive(PartialEq, Eq)]
-pub enum QueryBound<Q> {
-    Inclusive(Q),
-    Exclusive(Q),
-}
-
-pub struct AugmentedAVLTreeIterator<'a, Q: PartialOrd<K>, K: Ord, T, A, ShallDescend>
+pub struct AugmentedAVLTreeIterator<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
 where for<'b> ShallDescend: Fn(&'b A) -> bool
 {
-    lb: Option<QueryBound<Q>>,
-    ub: Option<QueryBound<Q>>,
+    lb: Option<QL>,
+    ub: Option<QU>,
     shall_descend: ShallDescend,
     stack: Vec<NodeIter<'a, K, T, A>>,
 }
 
-pub struct AugmentedAVLTreeMutIterator<'a, Q: PartialOrd<K>, K: Ord, T, A, ShallDescend>
+pub struct AugmentedAVLTreeMutIterator<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
 where for<'b> ShallDescend: Fn(&'b A) -> bool
 {
-    lb: Option<QueryBound<Q>>,
-    ub: Option<QueryBound<Q>>,
+    lb: Option<QL>,
+    ub: Option<QU>,
     shall_descend: ShallDescend,
     stack: Vec<NodeIterMut<'a, K, T, A>>,
 }
@@ -87,9 +81,9 @@ impl<K: Ord, T, A> Node<K, T, A> {
         update_aux(&mut self.aux, &self.key, left_aux, right_aux);
     }
 
-    fn iter<'a, Q: PartialOrd<K>, ShallDescend>(&'a self,
-                                                lb: &Option<QueryBound<Q>>, ub: &Option<QueryBound<Q>>,
-                                                shall_descend: &ShallDescend) -> Option<NodeIter<'a, K, T, A>>
+    fn iter<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
+        (&'a self, lb: &Option<QL>, ub: &Option<QU>,
+         shall_descend: &ShallDescend) -> Option<NodeIter<'a, K, T, A>>
     where for<'b> ShallDescend: Fn(&'b A) -> bool
     {
         if !shall_descend(&self.aux) {
@@ -98,33 +92,15 @@ impl<K: Ord, T, A> Node<K, T, A> {
 
         let mut in_lb = true;
         if let Some(lb) = lb {
-            match lb {
-                QueryBound::Inclusive(lb) => {
-                    if *lb > self.key {
-                        in_lb = false;
-                    }
-                },
-                QueryBound::Exclusive(lb) => {
-                    if *lb >= self.key {
-                        in_lb = false;
-                    }
-                }
+            if *lb > self.key {
+                in_lb = false;
             }
         }
 
         let mut in_ub = true;
         if let Some(ub) = ub {
-            match ub {
-                QueryBound::Inclusive(ub) => {
-                    if *ub < self.key {
-                        in_ub = false;
-                    }
-                },
-                QueryBound::Exclusive(ub) => {
-                    if *ub <= self.key {
-                        in_ub = false;
-                    }
-                }
+            if *ub <= self.key {
+                in_ub = false;
             }
         }
 
@@ -150,10 +126,9 @@ impl<K: Ord, T, A> Node<K, T, A> {
         Some(i)
     }
 
-    fn iter_mut<'a, Q: PartialOrd<K>, ShallDescend>(&'a mut self,
-                                                    lb: &Option<QueryBound<Q>>, ub: &Option<QueryBound<Q>>,
-                                                    shall_descend: &ShallDescend)
-                                                    -> Option<NodeIterMut<'a, K, T, A>>
+    fn iter_mut<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
+        (&'a mut self, lb: &Option<QL>, ub: &Option<QU>,
+         shall_descend: &ShallDescend) -> Option<NodeIterMut<'a, K, T, A>>
     where for<'b> ShallDescend: Fn(&'b A) -> bool
     {
         if !shall_descend(&self.aux) {
@@ -162,33 +137,15 @@ impl<K: Ord, T, A> Node<K, T, A> {
 
         let mut in_lb = true;
         if let Some(lb) = lb {
-            match lb {
-                QueryBound::Inclusive(lb) => {
-                    if *lb > self.key {
-                        in_lb = false;
-                    }
-                },
-                QueryBound::Exclusive(lb) => {
-                    if *lb >= self.key {
-                        in_lb = false;
-                    }
-                }
+            if *lb > self.key {
+                in_lb = false;
             }
         }
 
         let mut in_ub = true;
         if let Some(ub) = ub {
-            match ub {
-                QueryBound::Inclusive(ub) => {
-                    if *ub < self.key {
-                        in_ub = false;
-                    }
-                },
-                QueryBound::Exclusive(ub) => {
-                    if *ub <= self.key {
-                        in_ub = false;
-                    }
-                }
+            if *ub <= self.key {
+                in_ub = false;
             }
         }
 
@@ -602,33 +559,11 @@ impl<'a, K: Ord, T, A> NodeIterMut<'a, K, T, A> {
     }
 }
 
-impl<Q> QueryBound<Q> {
-    pub fn unwrap(&self) -> &Q {
-        match self {
-            Self::Inclusive(b) => b,
-            Self::Exclusive(b) => b,
-        }
-    }
-}
-
-impl<Q: Clone> Clone for QueryBound<Q> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Inclusive(b) => Self::Inclusive(b.clone()),
-            Self::Exclusive(b) => Self::Exclusive(b.clone()),
-        }
-    }
-}
-
-impl<Q: Clone + Copy> Copy for QueryBound<Q> {}
-
-impl<'a, Q: PartialOrd<K>, K: Ord, T, A, ShallDescend> AugmentedAVLTreeIterator<'a, Q, K, T, A, ShallDescend>
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
+    AugmentedAVLTreeIterator<'a, QL, QU, K, T, A, ShallDescend>
 where for<'b> ShallDescend: Fn(&'b A) -> bool
 {
-    fn new(root: &'a NodeRef<K, T, A>,
-           lb: Option<QueryBound<Q>>,
-           ub: Option<QueryBound<Q>>,
-           shall_descend: ShallDescend) -> Self {
+    fn new(root: &'a NodeRef<K, T, A>, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend) -> Self {
         let mut stack = Vec::new();
         if let Some(rn) = &root.node {
             let ni = rn.iter(&lb, &ub, &shall_descend);
@@ -641,8 +576,8 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
     }
 }
 
-impl<'a, Q: PartialOrd<K>, K: Ord, T, A, ShallDescend>
-    Iterator for AugmentedAVLTreeIterator<'a, Q, K, T, A, ShallDescend>
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
+    Iterator for AugmentedAVLTreeIterator<'a, QL, QU, K, T, A, ShallDescend>
 where for<'b> ShallDescend: Fn(&'b A) -> bool
 {
     type Item = (&'a K, &'a T);
@@ -667,13 +602,11 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
     }
 }
 
-impl<'a, Q: PartialOrd<K>, K: Ord, T, A, ShallDescend> AugmentedAVLTreeMutIterator<'a, Q, K, T, A, ShallDescend>
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
+    AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, A, ShallDescend>
 where for<'b> ShallDescend: Fn(&'b A) -> bool
 {
-    fn new(root: &'a mut NodeRef<K, T, A>,
-           lb: Option<QueryBound<Q>>,
-           ub: Option<QueryBound<Q>>,
-           shall_descend: ShallDescend) -> Self {
+    fn new(root: &'a mut NodeRef<K, T, A>, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend) -> Self {
         let mut stack = Vec::new();
         if let Some(rn) = &mut root.node {
             let ni = rn.iter_mut(&lb, &ub, &shall_descend);
@@ -686,8 +619,8 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
     }
 }
 
-impl<'a, Q: PartialOrd<K>, K: Ord, T, A, ShallDescend>
-    Iterator for AugmentedAVLTreeMutIterator<'a, Q, K, T, A, ShallDescend>
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
+    Iterator for AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, A, ShallDescend>
 where for<'b> ShallDescend: Fn(&'b A) -> bool
 {
     type Item = (&'a K, &'a mut T);
@@ -734,20 +667,16 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
         self.root.delete(key, is_match, shall_descend, update_aux).map(|deleted| deleted.0)
     }
 
-    pub fn iter<'a, Q: PartialOrd<K>, ShallDescend>
-        (&'a self,
-         lb: Option<QueryBound<Q>>, ub: Option<QueryBound<Q>>,
-         shall_descend: ShallDescend)
-         -> AugmentedAVLTreeIterator<'a, Q, K, T, A, ShallDescend>
+    pub fn iter<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
+        (&'a self, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend)
+         -> AugmentedAVLTreeIterator<'a, QL, QU, K, T, A, ShallDescend>
     where for<'b> ShallDescend: Fn(&'b A) -> bool {
         AugmentedAVLTreeIterator::new(&self.root, lb, ub, shall_descend)
     }
 
-    pub fn iter_mut<'a, Q: PartialOrd<K>, ShallDescend>
-        (&'a mut self,
-         lb: Option<QueryBound<Q>>, ub: Option<QueryBound<Q>>,
-         shall_descend: ShallDescend)
-         -> AugmentedAVLTreeMutIterator<'a, Q, K, T, A, ShallDescend>
+    pub fn iter_mut<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
+        (&'a mut self, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend)
+         -> AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, A, ShallDescend>
     where for<'b> ShallDescend: Fn(&'b A) -> bool {
         AugmentedAVLTreeMutIterator::new(&mut self.root, lb, ub, shall_descend)
     }
@@ -815,28 +744,20 @@ fn test_insert_delete_same() {
     for i in 0..128 {
         t.insert(0, i, 0, &test_update_aux);
         test_check_node(&t.root);
-        assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
-                          Some(QueryBound::Exclusive(1)), |_a| true).count(),
-                   (i + 1) as usize);
-        assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)),
-                              Some(QueryBound::Exclusive(1)), |_a| true).count(),
-                   (i + 1) as usize);
+        assert_eq!(t.iter(Some(0), Some(1), |_a| true).count(), (i + 1) as usize);
+        assert_eq!(t.iter_mut(Some(0), Some(1), |_a| true).count(), (i + 1) as usize);
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 128);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 128);
+    assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 128);
+    assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 128);
 
     for i in 0..128 {
         assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), Some((0, i)));
         test_check_node(&t.root);
-        assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
-                          Some(QueryBound::Exclusive(1)), |_a| true).count(),
-                   (127 - i) as usize);
-        assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)),
-                              Some(QueryBound::Exclusive(1)), |_a| true).count(),
-                   (127 - i) as usize);
+        assert_eq!(t.iter(Some(0), Some(1), |_a| true).count(), (127 - i) as usize);
+        assert_eq!(t.iter_mut(Some(0), Some(1), |_a| true).count(), (127 - i) as usize);
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
+    assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 0);
+    assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 0);
     assert_eq!(t.root.node.is_none(), true);
 }
 
@@ -847,28 +768,20 @@ fn test_insert_delete_same_rev() {
     for i in 0..128 {
         t.insert(0, i, 0, &test_update_aux);
         test_check_node(&t.root);
-        assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
-                          Some(QueryBound::Exclusive(1)), |_a| true).count(),
-                   (i + 1) as usize);
-        assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)),
-                              Some(QueryBound::Exclusive(1)), |_a| true).count(),
-                   (i + 1) as usize);
+        assert_eq!(t.iter(Some(0), Some(1), |_a| true).count(), (i + 1) as usize);
+        assert_eq!(t.iter_mut(Some(0), Some(1), |_a| true).count(), (i + 1) as usize);
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 128);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 128);
+    assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 128);
+    assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 128);
 
     for i in (0..128).rev() {
         assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), Some((0, i)));
         test_check_node(&t.root);
-        assert_eq!(t.iter(Some(QueryBound::Inclusive(0)),
-                          Some(QueryBound::Exclusive(1)), |_a| true).count(),
-                   i as usize);
-        assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)),
-                              Some(QueryBound::Exclusive(1)), |_a| true).count(),
-                   i as usize);
+        assert_eq!(t.iter(Some(0), Some(1), |_a| true).count(), i as usize);
+        assert_eq!(t.iter_mut(Some(0), Some(1), |_a| true).count(), i as usize);
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
+    assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 0);
+    assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 0);
     assert_eq!(t.root.node.is_none(), true);
 }
 
@@ -880,71 +793,56 @@ fn test_insert_delete_strided() {
         for j in [0, 2, 3, 1] {
             t.insert(i + j, i + j, 0, &test_update_aux);
             test_check_node(&t.root);
-            assert_eq!(t.iter(Some(QueryBound::Inclusive(i + j)),
-                              Some(QueryBound::Exclusive(i + j + 1)), |_a| true).count(),
-                       1);
-            assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(i + j)),
-                                  Some(QueryBound::Exclusive(i + j + 1)), |_a| true).count(),
+            assert_eq!(t.iter(Some(i + j), Some(i + j + 1), |_a| true).count(), 1);
+            assert_eq!(t.iter_mut(Some(i + j), Some(i + j + 1), |_a| true).count(),
                        1);
 
             t.insert(i + 256 + j, i + 256 + j, 0, &test_update_aux);
             test_check_node(&t.root);
-            assert_eq!(t.iter(Some(QueryBound::Inclusive(i + 256 + j)),
-                              Some(QueryBound::Exclusive(i + 256 + j + 1)), |_a| true).count(),
-                       1);
-            assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(i + 256 + j)),
-                                  Some(QueryBound::Exclusive(i + 256 + j + 1)), |_a| true).count(),
-                       1);
+            assert_eq!(t.iter(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true).count(), 1);
+            assert_eq!(t.iter_mut(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true).count(), 1);
         }
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 512);
-    assert_eq!(t.iter(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), |_a| true).count(), 510);
-    assert_eq!(t.iter(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), |_a| true).count(), 512);
-    assert_eq!(t.iter(Some(QueryBound::Exclusive(192)), Some(QueryBound::Exclusive(320)), |_a| true).count(), 127);
-    assert_eq!(t.iter(Some(QueryBound::Inclusive(192)), Some(QueryBound::Inclusive(320)), |_a| true).count(), 129);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 512);
-    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), |_a| true).count(), 510);
-    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), |_a| true).count(), 512);
-    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(192)), Some(QueryBound::Exclusive(320)), |_a| true).count(), 127);
-    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(192)), Some(QueryBound::Inclusive(320)), |_a| true).count(), 129);
+    assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 512);
+    assert_eq!(t.iter(Some(0), Some(511), |_a| true).count(), 511);
+    assert_eq!(t.iter(Some(0), Some(512), |_a| true).count(), 512);
+    assert_eq!(t.iter(Some(193), Some(320), |_a| true).count(), 127);
+    assert_eq!(t.iter(Some(192), Some(321), |_a| true).count(), 129);
+    assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 512);
+    assert_eq!(t.iter_mut(Some(0), Some(511), |_a| true).count(), 511);
+    assert_eq!(t.iter_mut(Some(0), Some(512), |_a| true).count(), 512);
+    assert_eq!(t.iter_mut(Some(193), Some(320), |_a| true).count(), 127);
+    assert_eq!(t.iter_mut(Some(192), Some(321), |_a| true).count(), 129);
 
     for i in (0..256).step_by(4) {
         for j in [0, 2, 3, 1] {
             assert_eq!(t.delete(&(i + j), &|_k, v| *v == i + j, &|_a| true, &test_update_aux), Some((i + j, i + j)));
             test_check_node(&t.root);
-            assert_eq!(t.iter(Some(QueryBound::Inclusive(i + j)),
-                              Some(QueryBound::Exclusive(i + j + 1)), |_a| true).count(),
-                       0);
-            assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(i + j)),
-                                  Some(QueryBound::Exclusive(i + j + 1)), |_a| true).count(),
-                       0);
+            assert_eq!(t.iter(Some(i + j), Some(i + j + 1), |_a| true).count(), 0);
+            assert_eq!(t.iter_mut(Some(i + j), Some(i + j + 1), |_a| true).count(), 0);
         }
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 256);
-    assert_eq!(t.iter(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), |_a| true).count(), 255);
-    assert_eq!(t.iter(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), |_a| true).count(), 256);
-    assert_eq!(t.iter(Some(QueryBound::Exclusive(128)), Some(QueryBound::Exclusive(320)), |_a| true).count(), 64);
-    assert_eq!(t.iter(Some(QueryBound::Inclusive(128)), Some(QueryBound::Inclusive(320)), |_a| true).count(), 65);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 256);
-    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(0)), Some(QueryBound::Exclusive(511)), |_a| true).count(), 255);
-    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(0)), Some(QueryBound::Inclusive(511)), |_a| true).count(), 256);
-    assert_eq!(t.iter_mut(Some(QueryBound::Exclusive(128)), Some(QueryBound::Exclusive(320)), |_a| true).count(), 64);
-    assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(128)), Some(QueryBound::Inclusive(320)), |_a| true).count(), 65);
+    assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 256);
+    assert_eq!(t.iter(Some(0), Some(511), |_a| true).count(), 255);
+    assert_eq!(t.iter(Some(0), Some(512), |_a| true).count(), 256);
+    assert_eq!(t.iter(Some(193), Some(320), |_a| true).count(), 64);
+    assert_eq!(t.iter(Some(192), Some(321), |_a| true).count(), 65);
+    assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 256);
+    assert_eq!(t.iter_mut(Some(0), Some(511), |_a| true).count(), 255);
+    assert_eq!(t.iter_mut(Some(0), Some(512), |_a| true).count(), 256);
+    assert_eq!(t.iter_mut(Some(193), Some(320), |_a| true).count(), 64);
+    assert_eq!(t.iter_mut(Some(192), Some(321), |_a| true).count(), 65);
 
     for i in (0..256).step_by(4).rev() {
         for j in [0, 2, 3, 1].iter().rev() {
             assert_eq!(t.delete(&(i + 256 + j), &|_k, v| *v == i + 256 + j, &|_a| true, &test_update_aux),
                        Some((i + 256 + j, i + 256 + j)));
             test_check_node(&t.root);
-            assert_eq!(t.iter(Some(QueryBound::Inclusive(i + 256 + j)),
-                              Some(QueryBound::Exclusive(i + 256 + j + 1)), |_a| true).count(),
-                       0);
-            assert_eq!(t.iter_mut(Some(QueryBound::Inclusive(i + 256 + j)),
-                                  Some(QueryBound::Exclusive(i + 256 + j + 1)), |_a| true).count(),
-                       0);
+            assert_eq!(t.iter(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true).count(), 0);
+            assert_eq!(t.iter_mut(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true).count(), 0);
         }
     }
-    assert_eq!(t.iter(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
-    assert_eq!(t.iter_mut(None::<QueryBound<u32>>, None, |_a| true).count(), 0);
+    assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 0);
+    assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 0);
     assert_eq!(t.root.node.is_none(), true);
 }
