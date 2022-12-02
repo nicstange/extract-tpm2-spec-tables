@@ -1,5 +1,3 @@
-extern crate alloc;
-
 use core::mem;
 use core::cmp::Ord;
 
@@ -681,6 +679,74 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
         AugmentedAVLTreeMutIterator::new(&mut self.root, lb, ub, shall_descend)
     }
 }
+
+
+pub struct AVLTree<K: Ord, T> {
+    tree: AugmentedAVLTree<K, T, ()>,
+}
+
+impl<K: Ord, T> AVLTree<K, T> {
+    pub fn new() -> Self {
+        Self{tree: AugmentedAVLTree::new()}
+    }
+
+    pub fn insert(&mut self, key: K, val: T) {
+        self.tree.insert(key, val, (), &Self::update_aux);
+    }
+
+    pub fn delete<Q: PartialOrd<K>, IsMatch>(&mut self, key: &Q, is_match: &IsMatch) -> Option<(K, T)>
+    where for<'a> IsMatch: Fn(&'a K, &'a T) -> bool
+    {
+        self.tree.delete(key, is_match, &Self::shall_descend, &Self::update_aux)
+    }
+
+    pub fn iter<'a, QL: PartialOrd<K>, QU: PartialOrd<K>>(&'a self, lb: Option<QL>, ub: Option<QU>)
+                                                          -> AVLTreeIterator<'a, QL, QU, K, T> {
+        AVLTreeIterator{
+            it: self.tree.iter(lb, ub, Self::shall_descend),
+        }
+    }
+
+    pub fn iter_mut<'a, QL: PartialOrd<K>, QU: PartialOrd<K>>(&'a mut self, lb: Option<QL>, ub: Option<QU>)
+                                                              -> AVLTreeMutIterator<'a, QL, QU, K, T> {
+        AVLTreeMutIterator{
+            it: self.tree.iter_mut(lb, ub, Self::shall_descend),
+        }
+    }
+
+    fn update_aux(_aux: &mut (), _key: &K, _laux: Option<&()>, _raux: Option<&()>) {}
+
+    fn shall_descend(_aux: &()) -> bool {
+        true
+    }
+}
+
+pub struct AVLTreeIterator<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> {
+    it: AugmentedAVLTreeIterator<'a, QL, QU, K, T, (), fn(&()) -> bool>
+}
+
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> Iterator for AVLTreeIterator<'a, QL, QU, K, T>
+{
+    type Item = (&'a K, &'a T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.it.next()
+    }
+}
+
+pub struct AVLTreeMutIterator<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> {
+    it: AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, (), fn(&()) -> bool>
+}
+
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> Iterator for AVLTreeMutIterator<'a, QL, QU, K, T>
+{
+    type Item = (&'a K, &'a mut T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.it.next()
+    }
+}
+
 
 
 #[cfg(test)]
