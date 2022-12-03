@@ -1,7 +1,6 @@
 use core::cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use crate::avl_tree::{AugmentedAVLTree, AugmentedAVLTreeIterator, AugmentedAVLTreeMutIterator};
 
-
 #[derive(PartialEq, Eq, Debug)]
 pub enum IntervalBound<Q> {
     Inclusive(Q),
@@ -299,6 +298,10 @@ pub struct IntervalTree<B: Clone + Ord + 'static, T> {
 impl<B: Clone + Ord + 'static, T> IntervalTree<B, T> {
     pub fn new() -> Self {
         Self{tree: AugmentedAVLTree::new()}
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.tree.is_empty()
     }
 
     fn shall_descend(query_lb: Option<&IntervalBound<B>>, subtree_ub: &UpperBoundAux<B>) -> bool {

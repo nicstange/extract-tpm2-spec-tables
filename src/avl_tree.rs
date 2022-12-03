@@ -179,6 +179,10 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
         NodeRef{node: Some(Box::new(Node::new(key, val, aux)))}
     }
 
+    fn is_empty(&self) -> bool {
+        self.node.is_none()
+    }
+
     fn rotate_left<UpdateAux>(&mut self, update_aux: &UpdateAux)
     where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
@@ -648,6 +652,10 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
         Self{root: NodeRef::new()}
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.root.is_empty()
+    }
+
     pub fn insert<UpdateAux>(&mut self, key: K, val: T, aux: A, update_aux: &UpdateAux)
     where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
@@ -688,6 +696,10 @@ pub struct AVLTree<K: Ord, T> {
 impl<K: Ord, T> AVLTree<K, T> {
     pub fn new() -> Self {
         Self{tree: AugmentedAVLTree::new()}
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.tree.is_empty()
     }
 
     pub fn insert(&mut self, key: K, val: T) {
