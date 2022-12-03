@@ -41,6 +41,14 @@ impl<B: Ord> Interval<B> {
             Self{lb: b1, ub: b0}
         }
     }
+
+    pub fn get_lb(&self) -> &IntervalBound<B> {
+        &self.lb
+    }
+
+    pub fn get_ub(&self) -> &IntervalBound<B> {
+        &self.ub
+    }
 }
 
 struct LowerBoundQuery<'a, B: Ord> {
