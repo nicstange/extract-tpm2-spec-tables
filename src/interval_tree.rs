@@ -27,7 +27,7 @@ impl<Q: Clone> Clone for IntervalBound<Q> {
 
 impl<Q: Clone + Copy> Copy for IntervalBound<Q> {}
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Interval <B: Ord> {
     lb: IntervalBound<B>,
     ub: IntervalBound<B>,
