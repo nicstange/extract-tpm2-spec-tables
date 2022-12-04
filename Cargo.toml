@@ -1,0 +1,15 @@
+[package]
+name = "extract-tpm2-spec-tables"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "extract-tpm2-spec-tables"
+
+[lib]
+
+[dependencies]
+pdf = { git = "https://github.com/pdf-rs/pdf.git", rev = "9ab086ca2285" }
+regex = "1.7.0"
