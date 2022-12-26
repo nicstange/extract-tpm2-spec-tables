@@ -67,6 +67,7 @@ enum TableType {
     TypeDef,
     CommandDef,
     ResponseDef,
+    Defines,
 }
 
 fn main() {
@@ -76,7 +77,7 @@ fn main() {
     let mut is_first = true;
     let mut last_table = LastTable::new();
     let mut table_type = TableType::Unknown;
-    let re_table_caption = Regex::new(r"(Table\s*[0-9]+)[^A-Z]*((Definition of.*)|(.*Command\s*$)|(.*Response\s*$))").unwrap();
+    let re_table_caption = Regex::new(r"(Table\s*[0-9]+)[^A-Z]*((Definition of.*)|(.*Command\s*$)|(.*Response\s*$)|(Defines\s*for.*(Values|Constants)\s*$))").unwrap();
     let re_tag_descr = Regex::new(r"[A-Za-z0-9_]+_ST_[A-Za-z0-9_]+").unwrap();
     let re_cc_descr = Regex::new(r"[A-Za-z0-9_]+_CC_[A-Za-z0-9_]+(\s*\{(NV|F|E)(\s+(NV|F|E))*\})?").unwrap();
     let re_handle_descr = Regex::new(r"[A-Za-z0-9_]+_R[HS]_[A-Za-z0-9_]+(\s*\+\s*(PP|\{PP\}))?|Auth\s*(Index|Handle):\s*([0-9]+|None)|Auth\s*Role:\s*(Physical\s*Presence|[A-Z][A-Za-z]+)(\s*\+\s*(Physical\s*Presence|[A-Z][A-Za-z]+))*").unwrap();
@@ -106,10 +107,13 @@ fn main() {
                         } else if let Some(command) = captures.get(4) {
                             name.push_str(command.as_str());
                             table_type = TableType::CommandDef;
-                        } else {
-                            let response = captures.get(5).unwrap();
+                        } else if let Some(response) = captures.get(5) {
                             name.push_str(response.as_str());
                             table_type = TableType::ResponseDef;
+                        } else {
+                            let defines = captures.get(6).unwrap();
+                            name.push_str(defines.as_str());
+                            table_type = TableType::Defines;
                         }
 
                         caption = name;
@@ -245,6 +249,19 @@ fn main() {
                                 } else if table.is_bold_sep_row(r + 1) {
                                     println!("PARAM_AREA");
                                 }
+                            }
+                        },
+                        TableType::Defines => {
+                            let last_col_is_descr = last_col_header.contains("Description")
+                                || last_col_header.contains("Comments");
+                            for r in (0 + (is_continuation as usize))..table.rows() {
+                                for c in 0..(table.columns() - last_col_is_descr as usize) {
+                                    if c != 0 {
+                                        print!(";");
+                                    }
+                                    print!("{}", table[(r, c)].texts.collect().trim());
+                                }
+                                println!("");
                             }
                         },
                         TableType::Unknown  => {},
