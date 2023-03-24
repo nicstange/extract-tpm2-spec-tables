@@ -753,10 +753,6 @@ impl Text {
     fn append(&mut self, text: &str) {
         self.text.push_str(text);
     }
-
-    fn newline(&mut self) {
-        self.text.push('\n');
-    }
 }
 
 struct OrderedTexts {
@@ -1066,10 +1062,6 @@ impl PendingText {
         self.pending.append(text);
     }
 
-    fn newline(&mut self) {
-        self.pending.newline();
-    }
-
     fn move_displacement(&mut self, point: Point) -> Option<Text> {
         let p = mem::replace(&mut self.pending, Text::new(point));
         if !p.text.is_empty() {
@@ -1114,6 +1106,7 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
         cm: pdf::content::Matrix,
         font_name: Option<String>,
         text_line_matrix: pdf::content::Matrix,
+        text_leading: f32,
     }
 
     impl Gs {
@@ -1126,7 +1119,7 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
     let mut gs_stack: Vec<Gs> = Vec::new();
     gs_stack.push(Gs{
         cm: pdf::content::Matrix::default(), font_name: None,
-        text_line_matrix: pdf::content::Matrix::default(),
+        text_line_matrix: pdf::content::Matrix::default(), text_leading: 0.,
     });
     let text_decoders: Cell<HashMap<String, PDFTextDecoder>> = Cell::new(HashMap::new());
     let mut current_text_decoder: Option<&PDFTextDecoder> = None;
@@ -1270,9 +1263,19 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                     texts.push(t);
                 }
             },
+            pdf::content::Op::Leading{leading} => {
+                gs_stack.last_mut().unwrap().text_leading = *leading;
+            },
             pdf::content::Op::TextNewline => {
                 check_path_empty(&path)?;
-                pending_text.newline();
+                let gs = gs_stack.last_mut().unwrap();
+
+                gs.text_line_matrix.e = -gs.text_leading * gs.text_line_matrix.c + gs.text_line_matrix.e;
+                gs.text_line_matrix.f = -gs.text_leading * gs.text_line_matrix.d + gs.text_line_matrix.f;
+
+                if let Some(t) = pending_text.move_displacement(gs.text_pos()) {
+                    texts.push(t);
+                }
             },
 
             pdf::content::Op::TextDraw{text} => {
