@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::env;
 use std::cmp;
 use std::mem;
 use std::mem::swap;
@@ -1053,6 +1052,7 @@ fn tj_array_operand_to_string(operand: &[pdf::content::TextDrawAdjusted],
     Ok(s)
 }
 
+#[derive(Debug)]
 struct PendingText {
     pending: Text,
 }
@@ -1094,7 +1094,6 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
         None => return Ok(Vec::new()),
     };
 
-
     // Ad-hoc algorithm for table reconstruction
     // 1.) Extract horizontal and vertical lines from the PDF drawing operations.
     // 2.) Group the families of horizontal and vertical lines into families of
@@ -1113,8 +1112,14 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
     let mut horizontal_segments = OrientedSegments::new();
     let mut vertical_segments = OrientedSegments::new();
     let mut special_horizontal_segments = OrientedSegments::new();
-    let mut cm = pdf::content::Matrix::default();
-    let mut cm_stack: Vec<pdf::content::Matrix> = Vec::new();
+
+    #[derive(Clone)]
+    struct Gs {
+        cm: pdf::content::Matrix,
+        font_name: Option<String>,
+    }
+    let mut gs_stack: Vec<Gs> = Vec::new();
+    gs_stack.push(Gs{cm: pdf::content::Matrix::default(), font_name: None});
     let text_decoders: Cell<HashMap<String, PDFTextDecoder>> = Cell::new(HashMap::new());
     let mut current_text_decoder: Option<&PDFTextDecoder> = None;
     let mut pending_text = PendingText::new();
@@ -1186,6 +1191,7 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                 // smallish, it could be part of a specially drawn horizontal table
                 // line (like the marker line representing the auth section in
                 // commands).
+                let cm = &gs_stack.last().unwrap().cm;
                 let height = cm.b + cm.d;
                 if height.abs() >= 5. {
                     continue;
@@ -1203,27 +1209,31 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
             // Graphics state operators
             pdf::content::Op::Save => {
                 check_path_empty(&path)?;
-                cm_stack.push(cm);
+                gs_stack.push(gs_stack.last().unwrap().clone());
             },
             pdf::content::Op::Restore => {
                 check_path_empty(&path)?;
-                cm = match cm_stack.pop() {
-                    None => return Err(""),
-                    Some(cm) => cm,
+                gs_stack.pop();
+                let gs = gs_stack.last().ok_or("GS pop on empty stack")?;
+                match &gs.font_name {
+                    Some(font_name) => {
+                        current_text_decoder = unsafe{&*text_decoders.as_ptr()}.get(font_name);
+                    },
+                    None => {
+                        current_text_decoder = None;
+                    },
                 };
             },
             pdf::content::Op::Transform{matrix} => {
-                cm = *matrix;
+                gs_stack.last_mut().unwrap().cm = *matrix;
             },
 
             // Text operators
             pdf::content::Op::BeginText => {
                 check_path_empty(&path)?;
-                current_text_decoder = None;
             },
             pdf::content::Op::EndText => {
                 check_path_empty(&path)?;
-                current_text_decoder = None;
                 if let Some(t) = pending_text.reset() {
                     texts.push(t);
                 }
@@ -1260,7 +1270,7 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
             pdf::content::Op::TextFont{name, size: _} => {
                 check_path_empty(&path)?;
                 let name = <pdf::primitive::Name as Borrow::<str>>::borrow(name);
-                drop(current_text_decoder);
+                gs_stack.last_mut().unwrap().font_name = Some(name.to_owned());
                 current_text_decoder = None;
                 match unsafe{&*text_decoders.as_ptr()}.get(name) {
                     Some(d) => current_text_decoder = Some(d),
