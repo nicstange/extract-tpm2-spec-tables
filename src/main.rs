@@ -1082,10 +1082,6 @@ impl PendingText {
     fn reset(&mut self) -> Option<Text> {
         self.move_displacement(Point::new_from_xy(Coordinate::new(0.), Coordinate::new(0.)))
     }
-
-    fn current_point(&self) -> &Point {
-        &self.pending.point
-    }
 }
 
 fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static str> {
@@ -1117,9 +1113,21 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
     struct Gs {
         cm: pdf::content::Matrix,
         font_name: Option<String>,
+        text_line_matrix: pdf::content::Matrix,
     }
+
+    impl Gs {
+        fn text_pos(&self) -> Point {
+            Point::new_from_xy(Coordinate::new(self.text_line_matrix.e),
+                               Coordinate::new(self.text_line_matrix.f))
+        }
+    }
+
     let mut gs_stack: Vec<Gs> = Vec::new();
-    gs_stack.push(Gs{cm: pdf::content::Matrix::default(), font_name: None});
+    gs_stack.push(Gs{
+        cm: pdf::content::Matrix::default(), font_name: None,
+        text_line_matrix: pdf::content::Matrix::default(),
+    });
     let text_decoders: Cell<HashMap<String, PDFTextDecoder>> = Cell::new(HashMap::new());
     let mut current_text_decoder: Option<&PDFTextDecoder> = None;
     let mut pending_text = PendingText::new();
@@ -1231,6 +1239,9 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
             // Text operators
             pdf::content::Op::BeginText => {
                 check_path_empty(&path)?;
+                let gs = gs_stack.last_mut().unwrap();
+                gs.text_line_matrix = pdf::content::Matrix::default();
+                pending_text.pending.point = gs.text_pos();
             },
             pdf::content::Op::EndText => {
                 check_path_empty(&path)?;
@@ -1239,16 +1250,23 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                 }
             },
             pdf::content::Op::MoveTextPosition{translation} => {
-                let old_displacement = pending_text.current_point();
-                let new_displacement = Point::new_from_xy(old_displacement.x + Distance::new(translation.x),
-                                                          old_displacement.y + Distance::new(translation.y));
-                if let Some(t) = pending_text.move_displacement(new_displacement) {
+                let gs = gs_stack.last_mut().unwrap();
+
+                gs.text_line_matrix.e = translation.x * gs.text_line_matrix.a +
+                    translation.y * gs.text_line_matrix.c +
+                    gs.text_line_matrix.e;
+                gs.text_line_matrix.f = translation.x * gs.text_line_matrix.b +
+                    translation.y * gs.text_line_matrix.d +
+                    gs.text_line_matrix.f;
+
+                if let Some(t) = pending_text.move_displacement(gs.text_pos()) {
                     texts.push(t);
                 }
             },
             pdf::content::Op::SetTextMatrix{matrix} => {
-                let displacement = Point::new_from_xy(Coordinate::new(matrix.e), Coordinate::new(matrix.f));
-                if let Some(t) = pending_text.move_displacement(displacement) {
+                let gs = gs_stack.last_mut().unwrap();
+                gs.text_line_matrix = *matrix;
+                if let Some(t) = pending_text.move_displacement(gs.text_pos()) {
                     texts.push(t);
                 }
             },
