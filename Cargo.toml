@@ -13,3 +13,4 @@ name = "extract-tpm2-spec-tables"
 [dependencies]
 pdf = { git = "https://github.com/pdf-rs/pdf.git", rev = "9ab086ca2285" }
 regex = "1.7.0"
+clap = { version = "4.0.32", features = ["derive"] }

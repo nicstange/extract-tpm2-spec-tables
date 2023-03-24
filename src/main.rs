@@ -8,6 +8,7 @@ use std::ops::{Add, Sub, Index, IndexMut};
 use std::fmt;
 use std::cell::Cell;
 use std::borrow::Borrow;
+use std::path;
 use std::str;
 use std::str::FromStr;
 use regex::Regex;
@@ -17,6 +18,7 @@ use pdf::font::Font;
 use pdf::object::Page;
 use extract_tpm2_spec_tables::avl_tree::AVLTree;
 use extract_tpm2_spec_tables::interval_tree::{IntervalTree, IntervalBound, Interval};
+use clap::Parser;
 
 struct LastTable {
     table: Option<Table>,
@@ -70,21 +72,42 @@ enum TableType {
     Defines,
 }
 
+#[derive(Parser, Debug)]
+struct Cli {
+    #[arg(name = "input-pdf-file", index(1), required = true)]
+    input_pdf_file: path::PathBuf,
+    #[arg(name = "source-document-name", long, short)]
+    source_document_name: Option<String>,
+}
+
 fn main() {
-    let filename = env::args().nth(1).expect("no input file specified");
-    let file = File::open(&filename).unwrap();
+    let cli = Cli::parse();
+
+    let file = File::open(cli.input_pdf_file).unwrap();
     let mut i = 0;
     let mut is_first = true;
     let mut last_table = LastTable::new();
     let mut table_type = TableType::Unknown;
-    let re_table_caption = Regex::new(r"(Table\s*[0-9]+)[^A-Z]*((Definition of.*)|(.*Command\s*$)|(.*Response\s*$)|(Defines\s*for.*(Values|Constants)\s*$))").unwrap();
+    let re_table_caption = Regex::new(r"(?x)
+                                      ^(?:Table\s*(?P<TABLENO>[0-9]+))[^A-Z]*
+                                      ((?P<TYPE>Definition\s+of.*)|
+                                       (?P<COMMAND>.*Command\s*)|
+                                       (?P<RESPONSE>.*Response\s*)|
+                                       (?P<DEFINES>Defines\s*for.*(Values|Constants)\s*)
+                                      )$").unwrap();
     let re_tag_descr = Regex::new(r"[A-Za-z0-9_]+_ST_[A-Za-z0-9_]+").unwrap();
     let re_cc_descr = Regex::new(r"[A-Za-z0-9_]+_CC_[A-Za-z0-9_]+(\s*\{(NV|F|E)(\s+(NV|F|E))*\})?").unwrap();
-    let re_handle_descr = Regex::new(r"[A-Za-z0-9_]+_R[HS]_[A-Za-z0-9_]+(\s*\+\s*(PP|\{PP\}))?|Auth\s*(Index|Handle):\s*([0-9]+|None)|Auth\s*Role:\s*(Physical\s*Presence|[A-Z][A-Za-z]+)(\s*\+\s*(Physical\s*Presence|[A-Z][A-Za-z]+))*").unwrap();
+    let re_handle_descr = Regex::new(r"(?x)
+                                      [A-Za-z0-9_]+_R[HS]_[A-Za-z0-9_]+(\s*\+\s*(PP|\{PP\}))?|
+                                      Auth\s*(Index|Handle):\s*([0-9]+|None)|
+                                      (?:
+                                       Auth\s*Role:\s*
+                                       (Physical\s*Presence|[A-Z][A-Za-z]+)
+                                       (\s*\+\s*(Physical\s*Presence|[A-Z][A-Za-z]+))*
+                                      )").unwrap();
     for p in file.pages() {
         let p = p.unwrap();
         i = i + 1;
-        // if i != 18 { continue };
         match handle_page(&file, &p) {
             Ok(mut tables) => {
                 if tables.is_empty() {
@@ -92,52 +115,57 @@ fn main() {
                 }
                 let mut is_first_in_page = true;
                 while let Some(table) = tables.pop() {
-                    let mut is_new_table = false;
-                    let mut is_continuation = false;
-                    let mut caption = table.captions.collect();
+                    let caption = table.captions.collect();
                     let captures = re_table_caption.captures(&caption);
-                    if let Some(captures) = captures {
-                        is_new_table = true;
+                    let is_new_table = match captures {
+                        Some(captures) => {
+                            last_table.replace(None);
+                            if !is_first {
+                                println!("");
+                            } else {
+                                is_first = false;
+                            }
 
-                        let mut name: String = String::from_str(captures.get(1).unwrap().as_str()).unwrap();
-                        name.push(' ');
-                        if let Some(type_definition) = captures.get(3) {
-                            name.push_str(type_definition.as_str());
-                            table_type = TableType::TypeDef;
-                        } else if let Some(command) = captures.get(4) {
-                            name.push_str(command.as_str());
-                            table_type = TableType::CommandDef;
-                        } else if let Some(response) = captures.get(5) {
-                            name.push_str(response.as_str());
-                            table_type = TableType::ResponseDef;
-                        } else {
-                            let defines = captures.get(6).unwrap();
-                            name.push_str(defines.as_str());
-                            table_type = TableType::Defines;
-                        }
+                            let table_no = captures.name("TABLENO").unwrap().as_str();
 
-                        caption = name;
-                    }
+                            let subject = if let Some(type_definition) = captures.name("TYPE") {
+                                table_type = TableType::TypeDef;
+                                type_definition.as_str()
+                            } else if let Some(command) = captures.name("COMMAND") {
+                                table_type = TableType::CommandDef;
+                                command.as_str()
+                            } else if let Some(response) = captures.name("RESPONSE") {
+                                table_type = TableType::ResponseDef;
+                                response.as_str()
+                            } else {
+                                table_type = TableType::Defines;
+                                let defines = captures.name("DEFINES").unwrap();
+                                defines.as_str()
+                            };
 
-                    if !is_new_table && is_first_in_page && last_table.can_continue_with(&table) {
-                        is_continuation = true;
-                    }
+                            match cli.source_document_name.as_ref() {
+                                Some(source_document_name) => {
+                                    println!("BEGINTABLE \"{}, page {}, table {}\" {}",
+                                             source_document_name, i, table_no, subject);
+                                },
+                                None => {
+                                    println!("BEGINTABLE \"page {}, table {}\" {}", i, table_no, subject);
+                                },
+                            };
+
+                            true
+                        },
+                        None => {
+                            if !is_first_in_page || !last_table.can_continue_with(&table) {
+                                last_table.replace(None);
+                                continue;
+                            }
+
+                            false
+                        },
+                    };
                     is_first_in_page = false;
 
-                    if !is_new_table && !is_continuation {
-                        last_table.replace(None);
-                        continue;
-                    }
-
-                    if is_new_table {
-                        last_table.replace(None);
-                        if !is_first {
-                            println!("");
-                        } else {
-                            is_first = false;
-                        }
-                        println!("BEGINTABLE page {}: {}", i, caption.trim());
-                    }
 
                     let last_col_header = table[(0, table.columns() - 1)].texts.collect();
                     match table_type {
@@ -146,7 +174,7 @@ fn main() {
                                 last_col_header.contains("Comments") || last_col_header.contains("Description")
                                 || last_col_header.contains("Definition") || last_col_header.contains("Requirements")
                                 || last_col_header.contains("Meaning");
-                            for r in (0 + (is_continuation as usize))..table.rows() {
+                            for r in (0 + (!is_new_table as usize))..table.rows() {
                                 for c in 0..(table.columns() - last_col_is_comments as usize) {
                                     if c != 0 {
                                         print!(";");
@@ -161,7 +189,7 @@ fn main() {
                             let next_to_last_is_name =
                                 table.columns() >= 2 &&
                                 table[(0, table.columns() - 2)].texts.collect().contains("Name");
-                            if !is_continuation {
+                            if is_new_table {
                                 for c in 0..table.columns() {
                                     if c != 0 {
                                         print!(";");
@@ -235,7 +263,7 @@ fn main() {
                         },
                         TableType::ResponseDef => {
                             let last_col_is_descr = last_col_header.contains("Description");
-                            for r in (0 + (is_continuation as usize))..table.rows() {
+                            for r in (0 + (!is_new_table as usize))..table.rows() {
                                 for c in 0..(table.columns() - last_col_is_descr as usize) {
                                     if c != 0 {
                                         print!(";");
@@ -254,7 +282,7 @@ fn main() {
                         TableType::Defines => {
                             let last_col_is_descr = last_col_header.contains("Description")
                                 || last_col_header.contains("Comments");
-                            for r in (0 + (is_continuation as usize))..table.rows() {
+                            for r in (0 + (!is_new_table as usize))..table.rows() {
                                 for c in 0..(table.columns() - last_col_is_descr as usize) {
                                     if c != 0 {
                                         print!(";");
@@ -930,7 +958,6 @@ impl PDFTextDecoder {
             },
             _ => (),
         };
-
         None
     }
 
