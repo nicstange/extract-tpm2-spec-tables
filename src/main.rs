@@ -120,7 +120,7 @@ fn main() {
                         Some(captures) => {
                             last_table.replace(None);
                             if !is_first {
-                                println!("");
+                                println!();
                             } else {
                                 is_first = false;
                             }
@@ -180,7 +180,7 @@ fn main() {
                                     }
                                     print!("{}", table[(r, c)].texts.collect().trim());
                                 }
-                                println!("");
+                                println!();
                             }
                         },
                         TableType::CommandDef => {
@@ -195,7 +195,7 @@ fn main() {
                                     }
                                     print!("{}", table[(0, c)].texts.collect().trim());
                                 }
-                                println!("");
+                                println!();
                             }
 
                             let mut in_handle_area = false;
@@ -249,7 +249,7 @@ fn main() {
                                         }
                                     }
                                 }
-                                println!("");
+                                println!();
 
                                 if table.is_special_sep_row(r + 1) {
                                     println!("HANDLE_AREA");
@@ -269,7 +269,7 @@ fn main() {
                                     }
                                     print!("{}", table[(r, c)].texts.collect().trim());
                                 }
-                                println!("");
+                                println!();
 
                                 if table.is_special_sep_row(r + 1) {
                                     println!("HANDLE_AREA");
@@ -288,7 +288,7 @@ fn main() {
                                     }
                                     print!("{}", table[(r, c)].texts.collect().trim());
                                 }
-                                println!("");
+                                println!();
                             }
                         },
                         TableType::Unknown  => {},
