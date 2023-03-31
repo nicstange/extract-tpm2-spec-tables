@@ -1416,12 +1416,12 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
             for special_y in special_ys.iter() {
                 let mut i = ys.len();
                 let mut duplicate = false;
-                for j in 0..ys.len() {
-                    if ys[j] == *special_y {
+                for (j, y) in ys.iter().enumerate() {
+                    if y == special_y {
                         i = j;
                         duplicate = true;
                         break;
-                    } else if ys[j].lb >= special_y.ub {
+                    } else if y.lb >= special_y.ub {
                         i = j;
                         break;
                     }
