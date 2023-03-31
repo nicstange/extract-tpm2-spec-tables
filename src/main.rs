@@ -1,23 +1,23 @@
-use std::collections::HashMap;
+use clap::Parser;
+use extract_tpm2_spec_tables::avl_tree::AVLTree;
+use extract_tpm2_spec_tables::interval_tree::{Interval, IntervalBound, IntervalTree};
+use pdf::file::File;
+use pdf::font::Font;
+use pdf::object::Page;
+use regex::Regex;
+use std::borrow::Borrow;
+use std::cell::Cell;
 use std::cmp;
+use std::collections::HashMap;
+use std::convert::{From, TryFrom};
+use std::fmt;
 use std::mem;
 use std::mem::swap;
-use std::convert::{TryFrom, From};
-use std::ops::{Add, Sub, Index, IndexMut};
-use std::fmt;
-use std::cell::Cell;
-use std::borrow::Borrow;
+use std::ops::{Add, Index, IndexMut, Sub};
 use std::path;
 use std::ptr;
 use std::str;
 use std::str::FromStr;
-use regex::Regex;
-use pdf::file::File;
-use pdf::font::Font;
-use pdf::object::Page;
-use extract_tpm2_spec_tables::avl_tree::AVLTree;
-use extract_tpm2_spec_tables::interval_tree::{IntervalTree, IntervalBound, Interval};
-use clap::Parser;
 
 struct LastTable {
     table: Option<Table>,
@@ -25,7 +25,7 @@ struct LastTable {
 
 impl LastTable {
     fn new() -> Self {
-        Self{table: None}
+        Self { table: None }
     }
 
     fn replace(&mut self, table: Option<Table>) {
@@ -53,7 +53,10 @@ impl LastTable {
         for i in 0..prev.columns() {
             let prev_header = prev[(0, i)].texts.collect();
             let next_header = next[(0, i)].texts.collect();
-            if !prev_header.split_whitespace().eq(next_header.split_whitespace()) {
+            if !prev_header
+                .split_whitespace()
+                .eq(next_header.split_whitespace())
+            {
                 return false;
             }
         }
@@ -85,23 +88,30 @@ fn main() {
     let mut is_first = true;
     let mut last_table = LastTable::new();
     let mut table_type = TableType::Unknown;
-    let re_table_caption = Regex::new(r"(?x)
+    let re_table_caption = Regex::new(
+        r"(?x)
                                       ^(?:Table\s*(?P<TABLENO>[0-9]+))[^A-Z]*
                                       ((?P<TYPE>Definition\s+of.*)|
                                        (?P<COMMAND>.*Command\s*)|
                                        (?P<RESPONSE>.*Response\s*)|
                                        (?P<DEFINES>Defines\s*for.*(Values|Constants)\s*)
-                                      )$").unwrap();
+                                      )$",
+    )
+    .unwrap();
     let re_tag_descr = Regex::new(r"[A-Za-z0-9_]+_ST_[A-Za-z0-9_]+").unwrap();
-    let re_cc_descr = Regex::new(r"[A-Za-z0-9_]+_CC_[A-Za-z0-9_]+(\s*\{(NV|F|E)(\s+(NV|F|E))*\})?").unwrap();
-    let re_handle_descr = Regex::new(r"(?x)
+    let re_cc_descr =
+        Regex::new(r"[A-Za-z0-9_]+_CC_[A-Za-z0-9_]+(\s*\{(NV|F|E)(\s+(NV|F|E))*\})?").unwrap();
+    let re_handle_descr = Regex::new(
+        r"(?x)
                                       [A-Za-z0-9_]+_R[HS]_[A-Za-z0-9_]+(\s*\+\s*(PP|\{PP\}))?|
                                       Auth\s*(Index|Handle):\s*([0-9]+|None)|
                                       (?:
                                        Auth\s*Role:\s*
                                        (Physical\s*Presence|[A-Z][A-Za-z]+)
                                        (\s*\+\s*(Physical\s*Presence|[A-Z][A-Za-z]+))*
-                                      )").unwrap();
+                                      )",
+    )
+    .unwrap();
     for p in file.pages() {
         let p = p.unwrap();
         i += 1;
@@ -142,16 +152,21 @@ fn main() {
 
                             match cli.source_document_name.as_ref() {
                                 Some(source_document_name) => {
-                                    println!("BEGINTABLE \"{}, page {}, table {}\" {}",
-                                             source_document_name, i, table_no, subject);
-                                },
+                                    println!(
+                                        "BEGINTABLE \"{}, page {}, table {}\" {}",
+                                        source_document_name, i, table_no, subject
+                                    );
+                                }
                                 None => {
-                                    println!("BEGINTABLE \"page {}, table {}\" {}", i, table_no, subject);
-                                },
+                                    println!(
+                                        "BEGINTABLE \"page {}, table {}\" {}",
+                                        i, table_no, subject
+                                    );
+                                }
                             };
 
                             true
-                        },
+                        }
                         None => {
                             if !is_first_in_page || !last_table.can_continue_with(&table) {
                                 last_table.replace(None);
@@ -159,17 +174,17 @@ fn main() {
                             }
 
                             false
-                        },
+                        }
                     };
                     is_first_in_page = false;
-
 
                     let last_col_header = table[(0, table.columns() - 1)].texts.collect();
                     match table_type {
                         TableType::TypeDef => {
-                            let last_col_is_comments =
-                                last_col_header.contains("Comments") || last_col_header.contains("Description")
-                                || last_col_header.contains("Definition") || last_col_header.contains("Requirements")
+                            let last_col_is_comments = last_col_header.contains("Comments")
+                                || last_col_header.contains("Description")
+                                || last_col_header.contains("Definition")
+                                || last_col_header.contains("Requirements")
                                 || last_col_header.contains("Meaning");
                             for r in (!is_new_table as usize)..table.rows() {
                                 for c in 0..(table.columns() - last_col_is_comments as usize) {
@@ -180,12 +195,14 @@ fn main() {
                                 }
                                 println!();
                             }
-                        },
+                        }
                         TableType::CommandDef => {
                             let last_col_is_descr = last_col_header.contains("Description");
-                            let next_to_last_is_name =
-                                table.columns() >= 2 &&
-                                table[(0, table.columns() - 2)].texts.collect().contains("Name");
+                            let next_to_last_is_name = table.columns() >= 2
+                                && table[(0, table.columns() - 2)]
+                                    .texts
+                                    .collect()
+                                    .contains("Name");
                             if is_new_table {
                                 for c in 0..table.columns() {
                                     if c != 0 {
@@ -257,7 +274,7 @@ fn main() {
                                     in_handle_area = false;
                                 }
                             }
-                        },
+                        }
                         TableType::ResponseDef => {
                             let last_col_is_descr = last_col_header.contains("Description");
                             for r in (!is_new_table as usize)..table.rows() {
@@ -275,7 +292,7 @@ fn main() {
                                     println!("PARAM_AREA");
                                 }
                             }
-                        },
+                        }
                         TableType::Defines => {
                             let last_col_is_descr = last_col_header.contains("Description")
                                 || last_col_header.contains("Comments");
@@ -288,8 +305,8 @@ fn main() {
                                 }
                                 println!();
                             }
-                        },
-                        TableType::Unknown  => {},
+                        }
+                        TableType::Unknown => {}
                     }
 
                     if is_new_table {
@@ -298,7 +315,7 @@ fn main() {
                         last_table.continue_with(table);
                     }
                 }
-            },
+            }
             Err(msg) => println!("Failed to process page {}: {}", i, msg),
         };
     }
@@ -312,10 +329,9 @@ struct Coordinate {
 
 impl Eq for Coordinate {}
 
-
 impl Coordinate {
     fn new(v: f32) -> Self {
-        Self{v}
+        Self { v }
     }
 
     fn err_lower_margin(&self) -> Coordinate {
@@ -364,7 +380,7 @@ struct Distance {
 
 impl Distance {
     fn new(d: f32) -> Self {
-        Self{d}
+        Self { d }
     }
 }
 
@@ -404,7 +420,7 @@ struct CoordinateWithErr {
 
 impl CoordinateWithErr {
     fn new(v: Coordinate) -> Self {
-        Self{lb: v, ub: v}
+        Self { lb: v, ub: v }
     }
 
     fn err_lower_margin(&self) -> Coordinate {
@@ -416,9 +432,17 @@ impl CoordinateWithErr {
     }
 
     fn fuse(&self, other: &CoordinateWithErr) -> Self {
-        let lb = if self.lb <= other.lb {self.lb} else {other.lb};
-        let ub = if self.ub >= other.ub {self.ub} else {other.ub};
-        Self{lb, ub}
+        let lb = if self.lb <= other.lb {
+            self.lb
+        } else {
+            other.lb
+        };
+        let ub = if self.ub >= other.ub {
+            self.ub
+        } else {
+            other.ub
+        };
+        Self { lb, ub }
     }
 }
 
@@ -482,32 +506,57 @@ struct OrientedSegments {
 
 impl OrientedSegments {
     fn new() -> Self {
-        Self{segments: AVLTree::new()}
+        Self {
+            segments: AVLTree::new(),
+        }
     }
 
-    fn insert_interval_one(intervals: &mut IntervalTree<CoordinateWithErr, ()>,
-                           mut ib: CoordinateWithErr, mut ie: CoordinateWithErr) {
+    fn insert_interval_one(
+        intervals: &mut IntervalTree<CoordinateWithErr, ()>,
+        mut ib: CoordinateWithErr,
+        mut ie: CoordinateWithErr,
+    ) {
         let fuse_range_lb = CoordinateWithErr::new(ib.lb - Distance::new(5.));
         let fuse_range_ub = CoordinateWithErr::new(ie.ub + Distance::new(5.));
-        while let Some(i0) = intervals.iter(Some(IntervalBound::Inclusive(fuse_range_lb)),
-                                            Some(IntervalBound::Inclusive(fuse_range_ub))).next()
-                                         .map(|(i0, ())| *i0) {
+        while let Some(i0) = intervals
+            .iter(
+                Some(IntervalBound::Inclusive(fuse_range_lb)),
+                Some(IntervalBound::Inclusive(fuse_range_ub)),
+            )
+            .next()
+            .map(|(i0, ())| *i0)
+        {
             let (i0, ()) = intervals.delete(&i0, &|_, _| true).unwrap();
             let i0b = i0.get_lb().unwrap();
             let i0e = i0.get_ub().unwrap();
-            ib = if ib == *i0b {ib.fuse(i0b)} else {cmp::min(ib, *i0b)};
-            ie = if ie == *i0e {ie.fuse(i0e)} else {cmp::max(ie, *i0e)};
+            ib = if ib == *i0b {
+                ib.fuse(i0b)
+            } else {
+                cmp::min(ib, *i0b)
+            };
+            ie = if ie == *i0e {
+                ie.fuse(i0e)
+            } else {
+                cmp::max(ie, *i0e)
+            };
         }
-        intervals.insert(Interval::new(IntervalBound::Inclusive(ib),
-                                       IntervalBound::Inclusive(ie)),
-                         ());
+        intervals.insert(
+            Interval::new(IntervalBound::Inclusive(ib), IntervalBound::Inclusive(ie)),
+            (),
+        );
     }
 
-    fn insert(&mut self, u: Coordinate, u_fuse_distance: Distance, mut ib: Coordinate, mut ie: Coordinate) {
+    fn insert(
+        &mut self,
+        u: Coordinate,
+        u_fuse_distance: Distance,
+        mut ib: Coordinate,
+        mut ie: Coordinate,
+    ) {
         match ib.cmp(&ie) {
             cmp::Ordering::Equal => return,
             cmp::Ordering::Less => (),
-            cmp::Ordering::Greater => swap(&mut ib, &mut ie)
+            cmp::Ordering::Greater => swap(&mut ib, &mut ie),
         }
 
         let ib = CoordinateWithErr::new(ib);
@@ -518,19 +567,27 @@ impl OrientedSegments {
 
         let mut u = CoordinateWithErr::new(u);
         let mut intervals = IntervalTree::new();
-        while let Some(u0) = {self.segments.iter(Some(CoordinateWithErr::new(u.lb - u_fuse_distance)),
-                                                 Some(CoordinateWithErr::new(u.ub + u_fuse_distance)))
-                              .next().map(|(u0, _)| *u0)} {
+        while let Some(u0) = {
+            self.segments
+                .iter(
+                    Some(CoordinateWithErr::new(u.lb - u_fuse_distance)),
+                    Some(CoordinateWithErr::new(u.ub + u_fuse_distance)),
+                )
+                .next()
+                .map(|(u0, _)| *u0)
+        } {
             let (u0, mut intervals0) = self.segments.delete(&u0, &|_, _| true).unwrap();
             u = u.fuse(&u0);
-           swap(&mut intervals0, &mut intervals);
+            swap(&mut intervals0, &mut intervals);
 
             for (i0, ()) in intervals0.iter(None, None) {
-                Self::insert_interval_one(&mut intervals,
-                                          *i0.get_lb().unwrap(),
-                                          *i0.get_ub().unwrap());
+                Self::insert_interval_one(
+                    &mut intervals,
+                    *i0.get_lb().unwrap(),
+                    *i0.get_ub().unwrap(),
+                );
             }
-        };
+        }
 
         Self::insert_interval_one(&mut intervals, ib, ie);
 
@@ -542,27 +599,36 @@ struct OrientedSegmentGroups {
     groups: IntervalTree<CoordinateWithErr, AVLTree<CoordinateWithErr, ()>>,
 }
 
-impl OrientedSegmentGroups {
-}
+impl OrientedSegmentGroups {}
 
 impl From<OrientedSegments> for OrientedSegmentGroups {
     fn from(segments: OrientedSegments) -> Self {
-        let mut groups: IntervalTree<CoordinateWithErr, AVLTree<CoordinateWithErr, ()>> = IntervalTree::new();
+        let mut groups: IntervalTree<CoordinateWithErr, AVLTree<CoordinateWithErr, ()>> =
+            IntervalTree::new();
 
-        for (u, segments) in segments.segments.iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>) {
-            for (segment, ()) in segments.iter(None::<IntervalBound::<CoordinateWithErr>>,
-                                               None::<IntervalBound::<CoordinateWithErr>>) {
+        for (u, segments) in segments
+            .segments
+            .iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>)
+        {
+            for (segment, ()) in segments.iter(
+                None::<IntervalBound<CoordinateWithErr>>,
+                None::<IntervalBound<CoordinateWithErr>>,
+            ) {
                 // Ignore unreasonably short segments.
-                if segment.get_lb().unwrap().lb + Distance::new(5.) >= segment.get_ub().unwrap().ub {
+                if segment.get_lb().unwrap().lb + Distance::new(5.) >= segment.get_ub().unwrap().ub
+                {
                     continue;
                 }
 
-                if let Some(us) =
-                    {groups.iter_mut(Some(*segment.get_lb()), Some(*segment.get_ub()))
-                     .find(|(other_segment, _)| {other_segment.get_lb() == segment.get_lb()
-                                                 && other_segment.get_ub() == segment.get_ub()})
-                     .map(|(_, us)| us)}
-                {
+                if let Some(us) = {
+                    groups
+                        .iter_mut(Some(*segment.get_lb()), Some(*segment.get_ub()))
+                        .find(|(other_segment, _)| {
+                            other_segment.get_lb() == segment.get_lb()
+                                && other_segment.get_ub() == segment.get_ub()
+                        })
+                        .map(|(_, us)| us)
+                } {
                     us.insert(*u, ());
                 } else {
                     let mut us = AVLTree::new();
@@ -572,7 +638,7 @@ impl From<OrientedSegments> for OrientedSegmentGroups {
             }
         }
 
-        Self{groups}
+        Self { groups }
     }
 }
 
@@ -584,18 +650,21 @@ struct Point {
 
 impl Point {
     fn new(p: &pdf::content::Point) -> Self {
-        Self{x: Coordinate::new(p.x), y: Coordinate::new(p.y)}
+        Self {
+            x: Coordinate::new(p.x),
+            y: Coordinate::new(p.y),
+        }
     }
 
     fn new_from_xy(x: Coordinate, y: Coordinate) -> Self {
-        Self{x, y}
+        Self { x, y }
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 enum PathPoint {
-    Move(Point), // (destination point)
-    Line(Point), // (end point)
+    Move(Point),                 // (destination point)
+    Line(Point),                 // (end point)
     Bezier(Point, Point, Point), // (control point 1, control point 2, end point)
 }
 
@@ -606,7 +675,7 @@ struct Path {
 
 impl Path {
     fn new() -> Self {
-        Self{points: Vec::new()}
+        Self { points: Vec::new() }
     }
 
     fn is_empty(&self) -> bool {
@@ -619,58 +688,54 @@ impl Path {
                 match self.points.last() {
                     Some(PathPoint::Move(_)) => {
                         self.points.pop();
-                    },
+                    }
                     Some(PathPoint::Line(_)) => {
                         // This entry is strictly needed for auto-closing -- the 'm' op starts a new subpath.
-                    },
+                    }
                     Some(PathPoint::Bezier(_, _, _)) => {
                         // This entry is strictly needed for auto-closing -- the 'm' op starts a new subpath.
-                    },
+                    }
                     None => (),
                 }
-            },
-            PathPoint::Line(n) => {
-                match self.points.last() {
-                    Some(PathPoint::Move(l)) => {
-                        if *l == *n {
-                            return Ok(());
-                        }
-                    },
-                    Some(PathPoint::Line(l)) => {
-                        if *l == *n {
-                            return Ok(());
-                        }
-                    },
-                    Some(PathPoint::Bezier(_, _, l)) => {
-                        if *l == *n {
-                            return Ok(());
-                        }
-                    },
-                    None => {
-                        return Err("Line path operation with no starting point");
-                    },
+            }
+            PathPoint::Line(n) => match self.points.last() {
+                Some(PathPoint::Move(l)) => {
+                    if *l == *n {
+                        return Ok(());
+                    }
+                }
+                Some(PathPoint::Line(l)) => {
+                    if *l == *n {
+                        return Ok(());
+                    }
+                }
+                Some(PathPoint::Bezier(_, _, l)) => {
+                    if *l == *n {
+                        return Ok(());
+                    }
+                }
+                None => {
+                    return Err("Line path operation with no starting point");
                 }
             },
-            PathPoint::Bezier(_, _, n) => {
-                match self.points.last() {
-                    Some(PathPoint::Move(l)) => {
-                        if *l == *n {
-                            return Ok(());
-                        }
-                    },
-                    Some(PathPoint::Line(l)) => {
-                        if *l == *n {
-                            return Ok(());
-                        }
-                    },
-                    Some(PathPoint::Bezier(_, _, l)) => {
-                        if *l == *n {
-                            return Ok(());
-                        }
-                    },
-                    None => {
-                        return Err("Bezier path operation with no starting point");
-                    },
+            PathPoint::Bezier(_, _, n) => match self.points.last() {
+                Some(PathPoint::Move(l)) => {
+                    if *l == *n {
+                        return Ok(());
+                    }
+                }
+                Some(PathPoint::Line(l)) => {
+                    if *l == *n {
+                        return Ok(());
+                    }
+                }
+                Some(PathPoint::Bezier(_, _, l)) => {
+                    if *l == *n {
+                        return Ok(());
+                    }
+                }
+                None => {
+                    return Err("Bezier path operation with no starting point");
                 }
             },
         }
@@ -698,9 +763,11 @@ impl Path {
         self.push(PathPoint::Line(*to)).unwrap();
     }
 
-    fn extract_oriented_segments(&self,
-                                 horizontal: &mut OrientedSegments,
-                                 vertical: &mut OrientedSegments) {
+    fn extract_oriented_segments(
+        &self,
+        horizontal: &mut OrientedSegments,
+        vertical: &mut OrientedSegments,
+    ) {
         let mut points = self.points.iter();
         let last_stop = points.next();
         let mut last_stop = match last_stop {
@@ -713,28 +780,29 @@ impl Path {
                 PathPoint::Move(stop) => last_stop = stop,
                 PathPoint::Line(stop) => {
                     if last_stop.y == stop.y {
-                        let u =last_stop.y;
+                        let u = last_stop.y;
                         let mut ib = last_stop.x;
                         let mut ie = stop.x;
-                        if ib > ie { swap(&mut ib, &mut ie); }
+                        if ib > ie {
+                            swap(&mut ib, &mut ie);
+                        }
                         horizontal.insert(u, Distance::new(5.), ib, ie);
-
                     } else if last_stop.x == stop.x {
                         let u = last_stop.x;
                         let mut ib = last_stop.y;
                         let mut ie = stop.y;
-                        if ib > ie { swap(&mut ib, &mut ie); }
+                        if ib > ie {
+                            swap(&mut ib, &mut ie);
+                        }
                         vertical.insert(u, Distance::new(5.), ib, ie);
-
                     }
                     last_stop = stop;
-                },
+                }
                 PathPoint::Bezier(_, _, stop) => last_stop = stop,
             };
         }
     }
 }
-
 
 #[derive(Clone, Debug)]
 struct Text {
@@ -744,7 +812,10 @@ struct Text {
 
 impl Text {
     fn new(point: Point) -> Self {
-        Self{point, text: String::new()}
+        Self {
+            point,
+            text: String::new(),
+        }
     }
 
     fn append(&mut self, text: &str) {
@@ -753,12 +824,12 @@ impl Text {
 }
 
 struct OrderedTexts {
-   texts: Vec<Text>,
+    texts: Vec<Text>,
 }
 
 impl OrderedTexts {
     fn new() -> Self {
-        Self{texts: Vec::new()}
+        Self { texts: Vec::new() }
     }
 
     fn insert(&mut self, text: Text) {
@@ -799,7 +870,9 @@ struct TableCell {
 
 impl TableCell {
     fn new() -> Self {
-        Self{texts: OrderedTexts::new()}
+        Self {
+            texts: OrderedTexts::new(),
+        }
     }
 }
 
@@ -812,12 +885,19 @@ struct Table {
 }
 
 impl Table {
-    fn new(xstops: Vec<CoordinateWithErr>,
-           ystops: Vec<CoordinateWithErr>,
-           special_y_indices: Vec<usize>) -> Self {
+    fn new(
+        xstops: Vec<CoordinateWithErr>,
+        ystops: Vec<CoordinateWithErr>,
+        special_y_indices: Vec<usize>,
+    ) -> Self {
         if xstops.is_empty() && ystops.is_empty() {
-            return Self{xstops, ystops, cells: Vec::new(), captions: OrderedTexts::new(),
-                        special_row_indices: Vec::new()};
+            return Self {
+                xstops,
+                ystops,
+                cells: Vec::new(),
+                captions: OrderedTexts::new(),
+                special_row_indices: Vec::new(),
+            };
         }
 
         assert!(xstops.len() >= 2);
@@ -831,7 +911,13 @@ impl Table {
             row
         });
         let special_row_indices = Vec::from_iter(special_y_indices.iter().rev().map(|i| rows - i));
-        Self{xstops, ystops, cells, captions: OrderedTexts::new(), special_row_indices}
+        Self {
+            xstops,
+            ystops,
+            cells,
+            captions: OrderedTexts::new(),
+            special_row_indices,
+        }
     }
 
     fn horizontal_extent(&self) -> (&CoordinateWithErr, &CoordinateWithErr) {
@@ -889,7 +975,6 @@ impl Table {
         let ystop = self.ystops[self.rows() - r];
         ystop.ub.v - ystop.lb.v >= 3.
     }
-
 }
 
 impl Index<(usize, usize)> for Table {
@@ -936,7 +1021,9 @@ impl PDFTextDecoder {
         }
 
         match f.subtype {
-            pdf::font::FontType::Type1 | pdf::font::FontType::Type3 | pdf::font::FontType::TrueType => {
+            pdf::font::FontType::Type1
+            | pdf::font::FontType::Type3
+            | pdf::font::FontType::TrueType => {
                 if let Some(enc) = f.encoding() {
                     if let pdf::encoding::BaseEncoding::WinAnsiEncoding = enc.base {
                         if enc.differences.is_empty() {
@@ -944,7 +1031,7 @@ impl PDFTextDecoder {
                         }
                     }
                 }
-            },
+            }
             _ => (),
         };
         None
@@ -954,8 +1041,8 @@ impl PDFTextDecoder {
         match self {
             Self::WinAnsiEncoding => {
                 let mut r: String = String::new();
-                for c in {s.data.iter().map(|b| {
-                    match *b {
+                for c in {
+                    s.data.iter().map(|b| match *b {
                         0x80u8 => Ok('\u{20ac}'),
                         0x81u8 => Err("Encountered unallocated character code"),
                         0x82u8 => Ok('\u{201a}'),
@@ -989,37 +1076,41 @@ impl PDFTextDecoder {
                         0x9eu8 => Ok('\u{017e}'),
                         0x9fu8 => Ok('\u{0178}'),
                         _ => Ok(char::from(*b)),
-                    }
-                })} {
+                    })
+                } {
                     match c {
                         Ok(c) => r.push(c),
                         Err(msg) => return Err(msg),
                     }
                 }
                 Ok(r)
-            },
+            }
             Self::ToUnicodeMap(map) => {
                 let mut r: String = String::new();
-                for c in {s.data.chunks(2).map(|b| {
-                    let b = ((b[0] as u16) << 8) + (b[1] as u16);
-                    match map.get(b) {
-                        Some(c) => Ok(c),
-                        None => Err("Encountered unallocated character code"),
-                    }
-                })} {
+                for c in {
+                    s.data.chunks(2).map(|b| {
+                        let b = ((b[0] as u16) << 8) + (b[1] as u16);
+                        match map.get(b) {
+                            Some(c) => Ok(c),
+                            None => Err("Encountered unallocated character code"),
+                        }
+                    })
+                } {
                     match c {
                         Ok(c) => r.push_str(c),
                         Err(msg) => return Err(msg),
                     }
                 }
                 Ok(r)
-            },
+            }
         }
     }
 }
 
-fn tj_string_operand_to_string(operand: &pdf::primitive::PdfString,
-                               decoder: &Option<&PDFTextDecoder>) -> Result<String, &'static str> {
+fn tj_string_operand_to_string(
+    operand: &pdf::primitive::PdfString,
+    decoder: &Option<&PDFTextDecoder>,
+) -> Result<String, &'static str> {
     let decoder = match decoder {
         None => return Err("Attempting to decode text string without active decoder set"),
         Some(decoder) => decoder,
@@ -1028,14 +1119,19 @@ fn tj_string_operand_to_string(operand: &pdf::primitive::PdfString,
     decoder.decode(operand)
 }
 
-fn tj_array_operand_to_string(operand: &[pdf::content::TextDrawAdjusted],
-                              decoder: &Option<&PDFTextDecoder>) -> Result<String, &'static str> {
+fn tj_array_operand_to_string(
+    operand: &[pdf::content::TextDrawAdjusted],
+    decoder: &Option<&PDFTextDecoder>,
+) -> Result<String, &'static str> {
     let mut s = String::new();
     let decoder = match decoder {
         None => return Err("Attempting to decode text string without active decoder set"),
         Some(decoder) => decoder,
     };
-    for t in operand.iter().filter_map(|e| match e { pdf::content::TextDrawAdjusted::Text(t) => Some(t), _ => None, }) {
+    for t in operand.iter().filter_map(|e| match e {
+        pdf::content::TextDrawAdjusted::Text(t) => Some(t),
+        _ => None,
+    }) {
         let t = decoder.decode(t)?;
         s = s + &t;
     }
@@ -1049,7 +1145,9 @@ struct PendingText {
 
 impl PendingText {
     fn new() -> Self {
-        Self{pending: Text::new(Point::new_from_xy(Coordinate::new(0.), Coordinate::new(0.)))}
+        Self {
+            pending: Text::new(Point::new_from_xy(Coordinate::new(0.), Coordinate::new(0.))),
+        }
     }
 
     fn append(&mut self, text: &str) {
@@ -1105,15 +1203,19 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
 
     impl Gs {
         fn text_pos(&self) -> Point {
-            Point::new_from_xy(Coordinate::new(self.text_line_matrix.e),
-                               Coordinate::new(self.text_line_matrix.f))
+            Point::new_from_xy(
+                Coordinate::new(self.text_line_matrix.e),
+                Coordinate::new(self.text_line_matrix.f),
+            )
         }
     }
 
     let mut gs_stack: Vec<Gs> = Vec::new();
-    gs_stack.push(Gs{
-        cm: pdf::content::Matrix::default(), font_name: None,
-        text_line_matrix: pdf::content::Matrix::default(), text_leading: 0.,
+    gs_stack.push(Gs {
+        cm: pdf::content::Matrix::default(),
+        font_name: None,
+        text_line_matrix: pdf::content::Matrix::default(),
+        text_leading: 0.,
     });
     let text_decoders: Cell<HashMap<String, PDFTextDecoder>> = Cell::new(HashMap::new());
     let mut current_text_decoder: Option<&PDFTextDecoder> = None;
@@ -1126,19 +1228,23 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
     for op in &ops {
         match &op {
             // Path construction operators
-            pdf::content::Op::MoveTo{p} => {
+            pdf::content::Op::MoveTo { p } => {
                 path.push(PathPoint::Move(Point::new(p)))?;
-            },
-            pdf::content::Op::LineTo{p} => {
+            }
+            pdf::content::Op::LineTo { p } => {
                 path.push(PathPoint::Line(Point::new(p)))?;
-            },
-            pdf::content::Op::CurveTo{c1, c2, p} => {
-                path.push(PathPoint::Bezier(Point::new(c1), Point::new(c2), Point::new(p)))?;
-            },
+            }
+            pdf::content::Op::CurveTo { c1, c2, p } => {
+                path.push(PathPoint::Bezier(
+                    Point::new(c1),
+                    Point::new(c2),
+                    Point::new(p),
+                ))?;
+            }
             pdf::content::Op::Close => {
                 path.close();
-            },
-            pdf::content::Op::Rect{rect} => {
+            }
+            pdf::content::Op::Rect { rect } => {
                 let x = Coordinate::new(rect.x);
                 let y = Coordinate::new(rect.y);
                 let w = Distance::new(rect.width);
@@ -1148,29 +1254,32 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                 path.push(PathPoint::Line(Point::new_from_xy(x + w, y + h)))?;
                 path.push(PathPoint::Line(Point::new_from_xy(x, y + h)))?;
                 path.push(PathPoint::Line(Point::new_from_xy(x, y)))?;
-            },
+            }
             pdf::content::Op::Stroke => {
                 path.extract_oriented_segments(&mut horizontal_segments, &mut vertical_segments);
                 path = Path::new();
-            },
-            pdf::content::Op::FillAndStroke{winding: _} | pdf::content::Op::Fill{winding: _} => {
+            }
+            pdf::content::Op::FillAndStroke { winding: _ }
+            | pdf::content::Op::Fill { winding: _ } => {
                 path.extract_oriented_segments(&mut horizontal_segments, &mut vertical_segments);
                 path = Path::new();
-            },
-            pdf::content::Op::Clip{winding: _} => {
+            }
+            pdf::content::Op::Clip { winding: _ } => {
                 // Modify clipping path. Kind of special in that they don't "end" the current path object.
-            },
+            }
             pdf::content::Op::EndPath => {
                 // No-op, "ends" the current path object.
                 path = Path::new();
-            },
+            }
 
             // Xobject operator potentially drawing an image.
-            pdf::content::Op::XObject{name} => {
+            pdf::content::Op::XObject { name } => {
                 let mut is_image = false;
                 if let Some(res) = &p.resources {
                     if let Some(xo) = res.xobjects.get(name) {
-                        if let Ok(xo) = <pdf::file::File<Vec<u8>> as pdf::object::Resolve>::get(file, *xo) {
+                        if let Ok(xo) =
+                            <pdf::file::File<Vec<u8>> as pdf::object::Resolve>::get(file, *xo)
+                        {
                             if let pdf::object::XObject::Image(_) = &*xo {
                                 is_image = true;
                             }
@@ -1195,33 +1304,41 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                 let width = cm.a + cm.c;
                 let x = Coordinate::new(cm.e);
                 let y = Coordinate::new(cm.f);
-                special_horizontal_segments.insert(y, Distance::new(5.),
-                                                   x, x + Distance::new(width));
-                special_horizontal_segments.insert(y + Distance::new(height), Distance::new(5.),
-                                                   x, x + Distance::new(width));
-            },
+                special_horizontal_segments.insert(
+                    y,
+                    Distance::new(5.),
+                    x,
+                    x + Distance::new(width),
+                );
+                special_horizontal_segments.insert(
+                    y + Distance::new(height),
+                    Distance::new(5.),
+                    x,
+                    x + Distance::new(width),
+                );
+            }
 
             // Graphics state operators
             pdf::content::Op::Save => {
                 check_path_empty(&path)?;
                 gs_stack.push(gs_stack.last().unwrap().clone());
-            },
+            }
             pdf::content::Op::Restore => {
                 check_path_empty(&path)?;
                 gs_stack.pop();
                 let gs = gs_stack.last().ok_or("GS pop on empty stack")?;
                 match &gs.font_name {
                     Some(font_name) => {
-                        current_text_decoder = unsafe{&*text_decoders.as_ptr()}.get(font_name);
-                    },
+                        current_text_decoder = unsafe { &*text_decoders.as_ptr() }.get(font_name);
+                    }
                     None => {
                         current_text_decoder = None;
-                    },
+                    }
                 };
-            },
-            pdf::content::Op::Transform{matrix} => {
+            }
+            pdf::content::Op::Transform { matrix } => {
                 gs_stack.last_mut().unwrap().cm = *matrix;
-            },
+            }
 
             // Text operators
             pdf::content::Op::BeginText => {
@@ -1229,35 +1346,35 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                 let gs = gs_stack.last_mut().unwrap();
                 gs.text_line_matrix = pdf::content::Matrix::default();
                 pending_text.pending.point = gs.text_pos();
-            },
+            }
             pdf::content::Op::EndText => {
                 check_path_empty(&path)?;
                 if let Some(t) = pending_text.reset() {
                     texts.push(t);
                 }
-            },
-            pdf::content::Op::MoveTextPosition{translation} => {
+            }
+            pdf::content::Op::MoveTextPosition { translation } => {
                 let gs = gs_stack.last_mut().unwrap();
 
-                gs.text_line_matrix.e += translation.x * gs.text_line_matrix.a +
-                    translation.y * gs.text_line_matrix.c;
-                gs.text_line_matrix.f += translation.x * gs.text_line_matrix.b +
-                    translation.y * gs.text_line_matrix.d;
+                gs.text_line_matrix.e +=
+                    translation.x * gs.text_line_matrix.a + translation.y * gs.text_line_matrix.c;
+                gs.text_line_matrix.f +=
+                    translation.x * gs.text_line_matrix.b + translation.y * gs.text_line_matrix.d;
 
                 if let Some(t) = pending_text.move_displacement(gs.text_pos()) {
                     texts.push(t);
                 }
-            },
-            pdf::content::Op::SetTextMatrix{matrix} => {
+            }
+            pdf::content::Op::SetTextMatrix { matrix } => {
                 let gs = gs_stack.last_mut().unwrap();
                 gs.text_line_matrix = *matrix;
                 if let Some(t) = pending_text.move_displacement(gs.text_pos()) {
                     texts.push(t);
                 }
-            },
-            pdf::content::Op::Leading{leading} => {
+            }
+            pdf::content::Op::Leading { leading } => {
                 gs_stack.last_mut().unwrap().text_leading = *leading;
-            },
+            }
             pdf::content::Op::TextNewline => {
                 check_path_empty(&path)?;
                 let gs = gs_stack.last_mut().unwrap();
@@ -1268,65 +1385,78 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                 if let Some(t) = pending_text.move_displacement(gs.text_pos()) {
                     texts.push(t);
                 }
-            },
+            }
 
-            pdf::content::Op::TextDraw{text} => {
+            pdf::content::Op::TextDraw { text } => {
                 check_path_empty(&path)?;
                 pending_text.append(&tj_string_operand_to_string(text, &current_text_decoder)?);
-            },
+            }
 
-            pdf::content::Op::TextDrawAdjusted{array} => {
+            pdf::content::Op::TextDrawAdjusted { array } => {
                 check_path_empty(&path)?;
                 pending_text.append(&tj_array_operand_to_string(array, &current_text_decoder)?);
             }
 
-            pdf::content::Op::TextFont{name, size: _} => {
+            pdf::content::Op::TextFont { name, size: _ } => {
                 check_path_empty(&path)?;
-                let name = <pdf::primitive::Name as Borrow::<str>>::borrow(name);
+                let name = <pdf::primitive::Name as Borrow<str>>::borrow(name);
                 gs_stack.last_mut().unwrap().font_name = Some(name.to_owned());
                 current_text_decoder = None;
-                match unsafe{&*text_decoders.as_ptr()}.get(name) {
+                match unsafe { &*text_decoders.as_ptr() }.get(name) {
                     Some(d) => current_text_decoder = Some(d),
                     None => {
                         if let Some(res) = &p.resources {
                             if let Some(f) = res.fonts.get(name) {
                                 let decoder = PDFTextDecoder::from_font(f, file);
                                 if let Some(decoder) = decoder {
-                                    unsafe{&mut *text_decoders.as_ptr()}.insert(name.to_string(), decoder);
-                                    current_text_decoder = Some(unsafe{&*text_decoders.as_ptr()}.get(name).unwrap());
+                                    unsafe { &mut *text_decoders.as_ptr() }
+                                        .insert(name.to_string(), decoder);
+                                    current_text_decoder = Some(
+                                        unsafe { &*text_decoders.as_ptr() }.get(name).unwrap(),
+                                    );
                                 }
                             }
                         }
-                    },
+                    }
                 };
-            },
+            }
 
             // Other operators
             _ => {
                 check_path_empty(&path)?;
-            },
+            }
         }
     }
 
     let horizontal_groups: OrientedSegmentGroups = horizontal_segments.into();
     let vertical_groups: OrientedSegmentGroups = vertical_segments.into();
     let mut tables: IntervalTree<CoordinateWithErr, Table> = IntervalTree::new();
-    for (hseg, ys) in horizontal_groups.groups.iter(None::<IntervalBound::<CoordinateWithErr>>,
-                                                    None::<IntervalBound::<CoordinateWithErr>>) {
-        let ys = Vec::from_iter(ys.iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>)
-                                .map(|(y, _)| y));
+    for (hseg, ys) in horizontal_groups.groups.iter(
+        None::<IntervalBound<CoordinateWithErr>>,
+        None::<IntervalBound<CoordinateWithErr>>,
+    ) {
+        let ys = Vec::from_iter(
+            ys.iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>)
+                .map(|(y, _)| y),
+        );
         let xlb = hseg.get_lb().unwrap();
         let xub = hseg.get_ub().unwrap();
-        for (vseg, xs) in vertical_groups.groups.iter(Some(IntervalBound::Inclusive(**ys.first().unwrap())),
-                                                      Some(IntervalBound::Inclusive(**ys.last().unwrap()))) {
+        for (vseg, xs) in vertical_groups.groups.iter(
+            Some(IntervalBound::Inclusive(**ys.first().unwrap())),
+            Some(IntervalBound::Inclusive(**ys.last().unwrap())),
+        ) {
             let ylb = vseg.get_lb().unwrap();
             let yub = vseg.get_ub().unwrap();
-            let mut ys = Vec::from_iter(ys.iter().map(|y| **y).filter(|y| {*y >= *ylb && *y <= *yub}));
+            let mut ys =
+                Vec::from_iter(ys.iter().map(|y| **y).filter(|y| *y >= *ylb && *y <= *yub));
             if ys.is_empty() {
                 continue;
             }
-            let mut xs = Vec::from_iter({xs.iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>)
-                                         .map(|(x, _)| *x).filter(|x| {*x >= *xlb && *x <= *xub})});
+            let mut xs = Vec::from_iter({
+                xs.iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>)
+                    .map(|(x, _)| *x)
+                    .filter(|x| *x >= *xlb && *x <= *xub)
+            });
             if xs.is_empty() {
                 continue;
             }
@@ -1354,19 +1484,25 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
             // Search for specially drawn horizontal segments in the covered range and
             // include them as special ystops.
             let mut special_ys: Vec<CoordinateWithErr> = Vec::new();
-            for (y, hsegs) in special_horizontal_segments.segments.iter(Some(*ylb), Some(*yub)) {
+            for (y, hsegs) in special_horizontal_segments
+                .segments
+                .iter(Some(*ylb), Some(*yub))
+            {
                 let mut total_overlap: f32 = 0.;
-                for (hseg, _) in hsegs.iter(Some(IntervalBound::Inclusive(*xlb)),
-                                            Some(IntervalBound::Inclusive(*xub))) {
+                for (hseg, _) in hsegs.iter(
+                    Some(IntervalBound::Inclusive(*xlb)),
+                    Some(IntervalBound::Inclusive(*xub)),
+                ) {
                     let hseg_lb = hseg.get_lb().unwrap();
                     let hseg_ub = hseg.get_ub().unwrap();
                     if (hseg_lb < xlb && hseg_lb.ub + Distance::new(5.) < xlb.lb)
-                        || (hseg_ub > xub && hseg_ub.lb - Distance::new(5.) > xub.ub){
+                        || (hseg_ub > xub && hseg_ub.lb - Distance::new(5.) > xub.ub)
+                    {
                         continue;
                     }
 
-                    let overlap_lb = if hseg_lb < xlb {xlb} else {hseg_lb};
-                    let overlap_ub = if hseg_ub > xub {xub} else {hseg_ub};
+                    let overlap_lb = if hseg_lb < xlb { xlb } else { hseg_lb };
+                    let overlap_ub = if hseg_ub > xub { xub } else { hseg_ub };
                     let overlap = overlap_ub.lb.v - overlap_lb.ub.v;
                     if overlap > 0. {
                         total_overlap += overlap;
@@ -1410,7 +1546,10 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
             // the table for covering potential caption text positions.
             let lb = *vext.0;
             let ub = CoordinateWithErr::new(vext.1.lb + Distance::new(16.));
-            tables.insert(Interval::new(IntervalBound::Inclusive(lb), IntervalBound::Inclusive(ub)), table);
+            tables.insert(
+                Interval::new(IntervalBound::Inclusive(lb), IntervalBound::Inclusive(ub)),
+                table,
+            );
         }
     }
 
@@ -1421,11 +1560,13 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
         let table = table.1;
         let vext = table.vertical_extent();
 
-        for voverlapping in tables.iter(Some(IntervalBound::Inclusive(*vext.0)),
-                                       Some(IntervalBound::Inclusive(*vext.1))) {
+        for voverlapping in tables.iter(
+            Some(IntervalBound::Inclusive(*vext.0)),
+            Some(IntervalBound::Inclusive(*vext.1)),
+        ) {
             let voverlapping = voverlapping.1;
             if ptr::eq(table as *const _, voverlapping as *const _) {
-                continue
+                continue;
             }
 
             let hext = table.horizontal_extent();
@@ -1445,8 +1586,10 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
     texts.reverse();
     while let Some(t) = texts.pop() {
         let y = CoordinateWithErr::new(t.point.y);
-        for table in tables.iter_mut(Some(IntervalBound::Inclusive(y)),
-                                     Some(IntervalBound::Inclusive(y))) {
+        for table in tables.iter_mut(
+            Some(IntervalBound::Inclusive(y)),
+            Some(IntervalBound::Inclusive(y)),
+        ) {
             let table = table.1;
             let hext = table.horizontal_extent();
             if hext.0 > &t.point.x || hext.1 < &t.point.x {

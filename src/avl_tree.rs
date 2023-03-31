@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
-use core::mem;
 use core::cmp::Ord;
+use core::mem;
 
 struct NodeRef<K: Ord, T, A> {
     node: Option<Box<Node<K, T, A>>>,
@@ -39,8 +39,16 @@ struct NodeIterMut<'a, K: Ord, T, A> {
     right: Option<&'a mut Node<K, T, A>>,
 }
 
-pub struct AugmentedAVLTreeIterator<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
-where for<'b> ShallDescend: Fn(&'b A) -> bool
+pub struct AugmentedAVLTreeIterator<
+    'a,
+    QL: PartialOrd<K>,
+    QU: PartialOrd<K>,
+    K: Ord,
+    T,
+    A,
+    ShallDescend,
+> where
+    for<'b> ShallDescend: Fn(&'b A) -> bool,
 {
     lb: Option<QL>,
     ub: Option<QU>,
@@ -48,8 +56,16 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
     stack: Vec<NodeIter<'a, K, T, A>>,
 }
 
-pub struct AugmentedAVLTreeMutIterator<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
-where for<'b> ShallDescend: Fn(&'b A) -> bool
+pub struct AugmentedAVLTreeMutIterator<
+    'a,
+    QL: PartialOrd<K>,
+    QU: PartialOrd<K>,
+    K: Ord,
+    T,
+    A,
+    ShallDescend,
+> where
+    for<'b> ShallDescend: Fn(&'b A) -> bool,
 {
     lb: Option<QL>,
     ub: Option<QU>,
@@ -63,21 +79,33 @@ pub struct AugmentedAVLTree<K: Ord, T, A> {
 
 impl<K: Ord, T, A> Node<K, T, A> {
     fn new(key: K, val: T, aux: A) -> Self {
-        Node{key, val, aux, bf: 0, left: NodeRef::new(), right: NodeRef::new()}
+        Node {
+            key,
+            val,
+            aux,
+            bf: 0,
+            left: NodeRef::new(),
+            right: NodeRef::new(),
+        }
     }
 
     fn do_update_aux<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         let left_aux = self.left.node.as_ref().map(|n| &n.aux);
         let right_aux = self.right.node.as_ref().map(|n| &n.aux);
         update_aux(&mut self.aux, &self.key, left_aux, right_aux);
     }
 
-    fn iter<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
-        (&'a self, lb: &Option<QL>, ub: &Option<QU>,
-         shall_descend: &ShallDescend) -> Option<NodeIter<'a, K, T, A>>
-    where for<'b> ShallDescend: Fn(&'b A) -> bool
+    fn iter<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>(
+        &'a self,
+        lb: &Option<QL>,
+        ub: &Option<QU>,
+        shall_descend: &ShallDescend,
+    ) -> Option<NodeIter<'a, K, T, A>>
+    where
+        for<'b> ShallDescend: Fn(&'b A) -> bool,
     {
         if !shall_descend(&self.aux) {
             return None;
@@ -119,10 +147,14 @@ impl<K: Ord, T, A> Node<K, T, A> {
         Some(i)
     }
 
-    fn iter_mut<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
-        (&'a mut self, lb: &Option<QL>, ub: &Option<QU>,
-         shall_descend: &ShallDescend) -> Option<NodeIterMut<'a, K, T, A>>
-    where for<'b> ShallDescend: Fn(&'b A) -> bool
+    fn iter_mut<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>(
+        &'a mut self,
+        lb: &Option<QL>,
+        ub: &Option<QU>,
+        shall_descend: &ShallDescend,
+    ) -> Option<NodeIterMut<'a, K, T, A>>
+    where
+        for<'b> ShallDescend: Fn(&'b A) -> bool,
     {
         if !shall_descend(&self.aux) {
             return None;
@@ -167,11 +199,13 @@ impl<K: Ord, T, A> Node<K, T, A> {
 
 impl<K: Ord, T, A> NodeRef<K, T, A> {
     fn new() -> Self {
-        NodeRef{node: None}
+        NodeRef { node: None }
     }
 
     fn new_node(key: K, val: T, aux: A) -> Self {
-        NodeRef{node: Some(Box::new(Node::new(key, val, aux)))}
+        NodeRef {
+            node: Some(Box::new(Node::new(key, val, aux))),
+        }
     }
 
     fn is_empty(&self) -> bool {
@@ -179,14 +213,15 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn rotate_left<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         match &mut self.node {
             None => (),
 
             Some(sn) => {
                 if sn.bf <= 0 {
-                    return ;
+                    return;
                 }
                 assert!(sn.bf <= 2);
 
@@ -218,21 +253,22 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                         rn.left.node = mem::replace(&mut self.node, None);
                         rn.do_update_aux(update_aux);
                         self.node = r;
-                    },
+                    }
                 }
             }
         }
     }
 
     fn rotate_right<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         match &mut self.node {
             None => (),
 
             Some(sn) => {
                 if sn.bf >= 0 {
-                    return ;
+                    return;
                 }
                 assert!(sn.bf >= -2);
 
@@ -263,14 +299,15 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                         ln.right.node = mem::replace(&mut self.node, None);
                         ln.do_update_aux(update_aux);
                         self.node = l;
-                    },
+                    }
                 }
             }
         }
     }
 
     fn rotate_right_left<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         match &mut self.node {
             None => (),
@@ -278,12 +315,13 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
             Some(sn) => {
                 sn.right.rotate_right(update_aux);
                 self.rotate_left(update_aux);
-            },
+            }
         }
     }
 
     fn rotate_left_right<UpdateAux>(&mut self, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         match &mut self.node {
             None => (),
@@ -291,19 +329,20 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
             Some(sn) => {
                 sn.left.rotate_left(update_aux);
                 self.rotate_right(update_aux);
-            },
+            }
         }
     }
 
     fn insert<UpdateAux>(&mut self, key: K, val: T, aux: A, update_aux: &UpdateAux) -> bool
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         match &mut self.node {
             None => {
                 *self = Self::new_node(key, val, aux);
                 self.node.as_mut().unwrap().do_update_aux(update_aux);
                 true
-            },
+            }
             Some(n) => {
                 if key <= n.key {
                     if !n.left.insert(key, val, aux, update_aux) {
@@ -326,7 +365,6 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                         n.do_update_aux(update_aux);
                         n.bf != 0
                     }
-
                 } else {
                     if !n.right.insert(key, val, aux, update_aux) {
                         n.do_update_aux(update_aux);
@@ -354,7 +392,8 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn account_deletion_left<UpdateAux>(&mut self, update_aux: &UpdateAux) -> bool
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         let n = self.node.as_deref_mut().unwrap();
         n.bf += 1;
@@ -375,7 +414,8 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn account_deletion_right<UpdateAux>(&mut self, update_aux: &UpdateAux) -> bool
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         let n = self.node.as_deref_mut().unwrap();
         n.bf -= 1;
@@ -396,7 +436,8 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     }
 
     fn isolate_first_node<UpdateAux>(&mut self, update_aux: &UpdateAux) -> (Self, bool)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         match &mut self.node {
             None => (Self::new(), false),
@@ -407,8 +448,8 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                         let r = mem::replace(&mut n.right.node, None);
                         n.bf = 0;
                         let s = mem::replace(&mut self.node, r);
-                        (NodeRef{node: s}, true)
-                    },
+                        (NodeRef { node: s }, true)
+                    }
                     Some(_) => {
                         if height_decreased {
                             let height_decreased = self.account_deletion_left(update_aux);
@@ -423,13 +464,17 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
         }
     }
 
-    pub fn delete<Q: PartialOrd<K>, IsMatch, ShallDescend, UpdateAux>(&mut self, key: &Q,
-                                                                      is_match: &IsMatch, shall_descend: &ShallDescend,
-                                                                      update_aux: &UpdateAux) -> Option<((K, T), bool)>
+    pub fn delete<Q: PartialOrd<K>, IsMatch, ShallDescend, UpdateAux>(
+        &mut self,
+        key: &Q,
+        is_match: &IsMatch,
+        shall_descend: &ShallDescend,
+        update_aux: &UpdateAux,
+    ) -> Option<((K, T), bool)>
     where
         for<'a> IsMatch: Fn(&'a K, &'a T) -> bool,
         for<'a> ShallDescend: Fn(&'a A) -> bool,
-        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         match &mut self.node {
             None => None,
@@ -446,7 +491,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                             let deleted = mem::replace(&mut self.node, r).unwrap();
                             let deleted = (deleted.key, deleted.val);
                             return Some((deleted, true));
-                        },
+                        }
                         Some(_) => {
                             let (mut s, height_decreased) = n.right.isolate_first_node(update_aux);
                             match &mut s.node {
@@ -454,7 +499,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                                     let deleted = mem::replace(&mut self.node, l).unwrap();
                                     let deleted = (deleted.key, deleted.val);
                                     return Some((deleted, true));
-                                },
+                                }
                                 Some(sn) => {
                                     sn.bf = n.bf;
                                     sn.left.node = l;
@@ -463,7 +508,8 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                                     let deleted = mem::replace(&mut self.node, s.node).unwrap();
                                     let deleted = (deleted.key, deleted.val);
                                     if height_decreased {
-                                        let height_decreased = self.account_deletion_right(update_aux);
+                                        let height_decreased =
+                                            self.account_deletion_right(update_aux);
                                         return Some((deleted, height_decreased));
                                     } else {
                                         return Some((deleted, false));
@@ -478,7 +524,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                     let deleted = n.left.delete(key, is_match, shall_descend, update_aux);
                     if let Some((deleted, height_decreased)) = deleted {
                         if height_decreased {
-                        let height_decreased = self.account_deletion_left(update_aux);
+                            let height_decreased = self.account_deletion_left(update_aux);
                             return Some((deleted, height_decreased));
                         } else {
                             n.do_update_aux(update_aux);
@@ -508,45 +554,55 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
 
 impl<'a, K: Ord, T, A> NodeIter<'a, K, T, A> {
     fn new() -> Self {
-        Self{key_val: None, left: None, right: None}
+        Self {
+            key_val: None,
+            left: None,
+            right: None,
+        }
     }
 
     fn next(&mut self) -> Option<NodeIterVal<'a, K, T, A>> {
         match self.left.take() {
             Some(ln) => Some(NodeIterVal::Child(ln)),
-            None => {
-                match self.key_val.take() {
-                    Some(v) => Some(NodeIterVal::Value(v)),
-                    None => self.right.take().map(|n| NodeIterVal::Child(n))
-                }
-            }
+            None => match self.key_val.take() {
+                Some(v) => Some(NodeIterVal::Value(v)),
+                None => self.right.take().map(|n| NodeIterVal::Child(n)),
+            },
         }
     }
 }
 
 impl<'a, K: Ord, T, A> NodeIterMut<'a, K, T, A> {
     fn new() -> Self {
-        Self{key_val: None, left: None, right: None}
+        Self {
+            key_val: None,
+            left: None,
+            right: None,
+        }
     }
 
     fn next(&mut self) -> Option<NodeIterMutVal<'a, K, T, A>> {
         match self.left.take() {
             Some(ln) => Some(NodeIterMutVal::Child(ln)),
-            None => {
-                match self.key_val.take() {
-                    Some(v) => Some(NodeIterMutVal::Value(v)),
-                    None => self.right.take().map(|n| NodeIterMutVal::Child(n))
-                }
-            }
+            None => match self.key_val.take() {
+                Some(v) => Some(NodeIterMutVal::Value(v)),
+                None => self.right.take().map(|n| NodeIterMutVal::Child(n)),
+            },
         }
     }
 }
 
 impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
     AugmentedAVLTreeIterator<'a, QL, QU, K, T, A, ShallDescend>
-where for<'b> ShallDescend: Fn(&'b A) -> bool
+where
+    for<'b> ShallDescend: Fn(&'b A) -> bool,
 {
-    fn new(root: &'a NodeRef<K, T, A>, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend) -> Self {
+    fn new(
+        root: &'a NodeRef<K, T, A>,
+        lb: Option<QL>,
+        ub: Option<QU>,
+        shall_descend: ShallDescend,
+    ) -> Self {
         let mut stack = Vec::new();
         if let Some(rn) = &root.node {
             let ni = rn.iter(&lb, &ub, &shall_descend);
@@ -555,13 +611,19 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
             }
         }
 
-        Self{lb, ub, shall_descend, stack}
+        Self {
+            lb,
+            ub,
+            shall_descend,
+            stack,
+        }
     }
 }
 
-impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
-    Iterator for AugmentedAVLTreeIterator<'a, QL, QU, K, T, A, ShallDescend>
-where for<'b> ShallDescend: Fn(&'b A) -> bool
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend> Iterator
+    for AugmentedAVLTreeIterator<'a, QL, QU, K, T, A, ShallDescend>
+where
+    for<'b> ShallDescend: Fn(&'b A) -> bool,
 {
     type Item = (&'a K, &'a T);
 
@@ -572,10 +634,10 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
                     if let Some(ni) = cn.iter(&self.lb, &self.ub, &self.shall_descend) {
                         self.stack.push(ni);
                     }
-                },
+                }
                 Some(NodeIterVal::Value(v)) => {
                     return Some(v);
-                },
+                }
                 None => {
                     self.stack.pop();
                 }
@@ -587,9 +649,15 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
 
 impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
     AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, A, ShallDescend>
-where for<'b> ShallDescend: Fn(&'b A) -> bool
+where
+    for<'b> ShallDescend: Fn(&'b A) -> bool,
 {
-    fn new(root: &'a mut NodeRef<K, T, A>, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend) -> Self {
+    fn new(
+        root: &'a mut NodeRef<K, T, A>,
+        lb: Option<QL>,
+        ub: Option<QU>,
+        shall_descend: ShallDescend,
+    ) -> Self {
         let mut stack = Vec::new();
         if let Some(rn) = &mut root.node {
             let ni = rn.iter_mut(&lb, &ub, &shall_descend);
@@ -598,13 +666,19 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
             }
         }
 
-        Self{lb, ub, shall_descend, stack}
+        Self {
+            lb,
+            ub,
+            shall_descend,
+            stack,
+        }
     }
 }
 
-impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend>
-    Iterator for AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, A, ShallDescend>
-where for<'b> ShallDescend: Fn(&'b A) -> bool
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T, A, ShallDescend> Iterator
+    for AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, A, ShallDescend>
+where
+    for<'b> ShallDescend: Fn(&'b A) -> bool,
 {
     type Item = (&'a K, &'a mut T);
 
@@ -615,10 +689,10 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
                     if let Some(ni) = cn.iter_mut(&self.lb, &self.ub, &self.shall_descend) {
                         self.stack.push(ni);
                     }
-                },
+                }
                 Some(NodeIterMutVal::Value(v)) => {
                     return Some(v);
-                },
+                }
                 None => {
                     self.stack.pop();
                 }
@@ -630,7 +704,9 @@ where for<'b> ShallDescend: Fn(&'b A) -> bool
 
 impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
     pub fn new() -> Self {
-        Self{root: NodeRef::new()}
+        Self {
+            root: NodeRef::new(),
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -638,33 +714,50 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
     }
 
     pub fn insert<UpdateAux>(&mut self, key: K, val: T, aux: A, update_aux: &UpdateAux)
-    where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+    where
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
         self.root.insert(key, val, aux, update_aux);
     }
 
-    pub fn delete<Q: PartialOrd<K>, IsMatch, ShallDescend, UpdateAux>(&mut self, key: &Q,
-                                                                      is_match: &IsMatch, shall_descend: &ShallDescend,
-                                                                      update_aux: &UpdateAux) -> Option<(K, T)>
+    pub fn delete<Q: PartialOrd<K>, IsMatch, ShallDescend, UpdateAux>(
+        &mut self,
+        key: &Q,
+        is_match: &IsMatch,
+        shall_descend: &ShallDescend,
+        update_aux: &UpdateAux,
+    ) -> Option<(K, T)>
     where
         for<'a> IsMatch: Fn(&'a K, &'a T) -> bool,
         for<'a> ShallDescend: Fn(&'a A) -> bool,
-        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
+        for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>),
     {
-        self.root.delete(key, is_match, shall_descend, update_aux).map(|deleted| deleted.0)
+        self.root
+            .delete(key, is_match, shall_descend, update_aux)
+            .map(|deleted| deleted.0)
     }
 
-    pub fn iter<QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
-        (&self, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend)
-         -> AugmentedAVLTreeIterator<'_, QL, QU, K, T, A, ShallDescend>
-    where for<'a> ShallDescend: Fn(&'a A) -> bool {
+    pub fn iter<QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>(
+        &self,
+        lb: Option<QL>,
+        ub: Option<QU>,
+        shall_descend: ShallDescend,
+    ) -> AugmentedAVLTreeIterator<'_, QL, QU, K, T, A, ShallDescend>
+    where
+        for<'a> ShallDescend: Fn(&'a A) -> bool,
+    {
         AugmentedAVLTreeIterator::new(&self.root, lb, ub, shall_descend)
     }
 
-    pub fn iter_mut<QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
-        (&mut self, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend)
-         -> AugmentedAVLTreeMutIterator<'_, QL, QU, K, T, A, ShallDescend>
-    where for<'a> ShallDescend: Fn(&'a A) -> bool {
+    pub fn iter_mut<QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>(
+        &mut self,
+        lb: Option<QL>,
+        ub: Option<QU>,
+        shall_descend: ShallDescend,
+    ) -> AugmentedAVLTreeMutIterator<'_, QL, QU, K, T, A, ShallDescend>
+    where
+        for<'a> ShallDescend: Fn(&'a A) -> bool,
+    {
         AugmentedAVLTreeMutIterator::new(&mut self.root, lb, ub, shall_descend)
     }
 }
@@ -681,7 +774,9 @@ pub struct AVLTree<K: Ord, T> {
 
 impl<K: Ord, T> AVLTree<K, T> {
     pub fn new() -> Self {
-        Self{tree: AugmentedAVLTree::new()}
+        Self {
+            tree: AugmentedAVLTree::new(),
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -692,22 +787,34 @@ impl<K: Ord, T> AVLTree<K, T> {
         self.tree.insert(key, val, (), &Self::update_aux);
     }
 
-    pub fn delete<Q: PartialOrd<K>, IsMatch>(&mut self, key: &Q, is_match: &IsMatch) -> Option<(K, T)>
-    where for<'a> IsMatch: Fn(&'a K, &'a T) -> bool
+    pub fn delete<Q: PartialOrd<K>, IsMatch>(
+        &mut self,
+        key: &Q,
+        is_match: &IsMatch,
+    ) -> Option<(K, T)>
+    where
+        for<'a> IsMatch: Fn(&'a K, &'a T) -> bool,
     {
-        self.tree.delete(key, is_match, &Self::shall_descend, &Self::update_aux)
+        self.tree
+            .delete(key, is_match, &Self::shall_descend, &Self::update_aux)
     }
 
-    pub fn iter<QL: PartialOrd<K>, QU: PartialOrd<K>>(&self, lb: Option<QL>, ub: Option<QU>)
-                                                      -> AVLTreeIterator<'_, QL, QU, K, T> {
-        AVLTreeIterator{
+    pub fn iter<QL: PartialOrd<K>, QU: PartialOrd<K>>(
+        &self,
+        lb: Option<QL>,
+        ub: Option<QU>,
+    ) -> AVLTreeIterator<'_, QL, QU, K, T> {
+        AVLTreeIterator {
             it: self.tree.iter(lb, ub, Self::shall_descend),
         }
     }
 
-    pub fn iter_mut<QL: PartialOrd<K>, QU: PartialOrd<K>>(&mut self, lb: Option<QL>, ub: Option<QU>)
-                                                          -> AVLTreeMutIterator<'_, QL, QU, K, T> {
-        AVLTreeMutIterator{
+    pub fn iter_mut<QL: PartialOrd<K>, QU: PartialOrd<K>>(
+        &mut self,
+        lb: Option<QL>,
+        ub: Option<QU>,
+    ) -> AVLTreeMutIterator<'_, QL, QU, K, T> {
+        AVLTreeMutIterator {
             it: self.tree.iter_mut(lb, ub, Self::shall_descend),
         }
     }
@@ -726,10 +833,11 @@ impl<K: Ord, T> Default for AVLTree<K, T> {
 }
 
 pub struct AVLTreeIterator<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> {
-    it: AugmentedAVLTreeIterator<'a, QL, QU, K, T, (), fn(&()) -> bool>
+    it: AugmentedAVLTreeIterator<'a, QL, QU, K, T, (), fn(&()) -> bool>,
 }
 
-impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> Iterator for AVLTreeIterator<'a, QL, QU, K, T>
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> Iterator
+    for AVLTreeIterator<'a, QL, QU, K, T>
 {
     type Item = (&'a K, &'a T);
 
@@ -739,10 +847,11 @@ impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> Iterator for AVLTreeIt
 }
 
 pub struct AVLTreeMutIterator<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> {
-    it: AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, (), fn(&()) -> bool>
+    it: AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, (), fn(&()) -> bool>,
 }
 
-impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> Iterator for AVLTreeMutIterator<'a, QL, QU, K, T>
+impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> Iterator
+    for AVLTreeMutIterator<'a, QL, QU, K, T>
 {
     type Item = (&'a K, &'a mut T);
 
@@ -751,23 +860,17 @@ impl<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, K: Ord, T> Iterator for AVLTreeMu
     }
 }
 
-
-
 #[cfg(test)]
 fn test_update_aux<T>(height: &mut u32, _val: &T, lheight: Option<&u32>, rheight: Option<&u32>) {
     match lheight {
-        None => {
-            match rheight {
-                None => *height = 1,
-                Some(rheight) => *height = rheight + 1,
-            }
+        None => match rheight {
+            None => *height = 1,
+            Some(rheight) => *height = rheight + 1,
         },
-        Some(lheight) => {
-            match  rheight {
-                None => *height = lheight + 1,
-                Some(rheight) => *height = core::cmp::max(lheight, rheight) + 1,
-            }
-        }
+        Some(lheight) => match rheight {
+            None => *height = lheight + 1,
+            Some(rheight) => *height = core::cmp::max(lheight, rheight) + 1,
+        },
     }
 }
 
@@ -791,13 +894,13 @@ fn test_check_node<K: Ord, T>(n: &NodeRef<K, T, u32>) -> u32 {
             }
 
             let mut lneigh = &n.left.node;
-            while let Some(lneighn) = &lneigh{
+            while let Some(lneighn) = &lneigh {
                 assert!(lneighn.key <= n.key);
                 lneigh = &lneighn.right.node;
             }
 
             let mut rneigh = &n.right.node;
-            while let Some(rneighn) = &rneigh{
+            while let Some(rneighn) = &rneigh {
                 assert!(n.key <= rneighn.key);
                 rneigh = &rneighn.left.node;
             }
@@ -814,17 +917,32 @@ fn test_insert_delete_same() {
     for i in 0..128 {
         t.insert(0, i, 0, &test_update_aux);
         test_check_node(&t.root);
-        assert_eq!(t.iter(Some(0), Some(1), |_a| true).count(), (i + 1) as usize);
-        assert_eq!(t.iter_mut(Some(0), Some(1), |_a| true).count(), (i + 1) as usize);
+        assert_eq!(
+            t.iter(Some(0), Some(1), |_a| true).count(),
+            (i + 1) as usize
+        );
+        assert_eq!(
+            t.iter_mut(Some(0), Some(1), |_a| true).count(),
+            (i + 1) as usize
+        );
     }
     assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 128);
     assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 128);
 
     for i in 0..128 {
-        assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), Some((0, i)));
+        assert_eq!(
+            t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux),
+            Some((0, i))
+        );
         test_check_node(&t.root);
-        assert_eq!(t.iter(Some(0), Some(1), |_a| true).count(), (127 - i) as usize);
-        assert_eq!(t.iter_mut(Some(0), Some(1), |_a| true).count(), (127 - i) as usize);
+        assert_eq!(
+            t.iter(Some(0), Some(1), |_a| true).count(),
+            (127 - i) as usize
+        );
+        assert_eq!(
+            t.iter_mut(Some(0), Some(1), |_a| true).count(),
+            (127 - i) as usize
+        );
     }
     assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 0);
     assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 0);
@@ -838,14 +956,23 @@ fn test_insert_delete_same_rev() {
     for i in 0..128 {
         t.insert(0, i, 0, &test_update_aux);
         test_check_node(&t.root);
-        assert_eq!(t.iter(Some(0), Some(1), |_a| true).count(), (i + 1) as usize);
-        assert_eq!(t.iter_mut(Some(0), Some(1), |_a| true).count(), (i + 1) as usize);
+        assert_eq!(
+            t.iter(Some(0), Some(1), |_a| true).count(),
+            (i + 1) as usize
+        );
+        assert_eq!(
+            t.iter_mut(Some(0), Some(1), |_a| true).count(),
+            (i + 1) as usize
+        );
     }
     assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 128);
     assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 128);
 
     for i in (0..128).rev() {
-        assert_eq!(t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux), Some((0, i)));
+        assert_eq!(
+            t.delete(&0, &|_k, v| *v == i, &|_a| true, &test_update_aux),
+            Some((0, i))
+        );
         test_check_node(&t.root);
         assert_eq!(t.iter(Some(0), Some(1), |_a| true).count(), i as usize);
         assert_eq!(t.iter_mut(Some(0), Some(1), |_a| true).count(), i as usize);
@@ -864,13 +991,23 @@ fn test_insert_delete_strided() {
             t.insert(i + j, i + j, 0, &test_update_aux);
             test_check_node(&t.root);
             assert_eq!(t.iter(Some(i + j), Some(i + j + 1), |_a| true).count(), 1);
-            assert_eq!(t.iter_mut(Some(i + j), Some(i + j + 1), |_a| true).count(),
-                       1);
+            assert_eq!(
+                t.iter_mut(Some(i + j), Some(i + j + 1), |_a| true).count(),
+                1
+            );
 
             t.insert(i + 256 + j, i + 256 + j, 0, &test_update_aux);
             test_check_node(&t.root);
-            assert_eq!(t.iter(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true).count(), 1);
-            assert_eq!(t.iter_mut(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true).count(), 1);
+            assert_eq!(
+                t.iter(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true)
+                    .count(),
+                1
+            );
+            assert_eq!(
+                t.iter_mut(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true)
+                    .count(),
+                1
+            );
         }
     }
     assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 512);
@@ -886,10 +1023,16 @@ fn test_insert_delete_strided() {
 
     for i in (0..256).step_by(4) {
         for j in [0, 2, 3, 1] {
-            assert_eq!(t.delete(&(i + j), &|_k, v| *v == i + j, &|_a| true, &test_update_aux), Some((i + j, i + j)));
+            assert_eq!(
+                t.delete(&(i + j), &|_k, v| *v == i + j, &|_a| true, &test_update_aux),
+                Some((i + j, i + j))
+            );
             test_check_node(&t.root);
             assert_eq!(t.iter(Some(i + j), Some(i + j + 1), |_a| true).count(), 0);
-            assert_eq!(t.iter_mut(Some(i + j), Some(i + j + 1), |_a| true).count(), 0);
+            assert_eq!(
+                t.iter_mut(Some(i + j), Some(i + j + 1), |_a| true).count(),
+                0
+            );
         }
     }
     assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 256);
@@ -905,11 +1048,26 @@ fn test_insert_delete_strided() {
 
     for i in (0..256).step_by(4).rev() {
         for j in [0, 2, 3, 1].iter().rev() {
-            assert_eq!(t.delete(&(i + 256 + j), &|_k, v| *v == i + 256 + j, &|_a| true, &test_update_aux),
-                       Some((i + 256 + j, i + 256 + j)));
+            assert_eq!(
+                t.delete(
+                    &(i + 256 + j),
+                    &|_k, v| *v == i + 256 + j,
+                    &|_a| true,
+                    &test_update_aux
+                ),
+                Some((i + 256 + j, i + 256 + j))
+            );
             test_check_node(&t.root);
-            assert_eq!(t.iter(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true).count(), 0);
-            assert_eq!(t.iter_mut(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true).count(), 0);
+            assert_eq!(
+                t.iter(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true)
+                    .count(),
+                0
+            );
+            assert_eq!(
+                t.iter_mut(Some(i + 256 + j), Some(i + 256 + j + 1), |_a| true)
+                    .count(),
+                0
+            );
         }
     }
     assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 0);
