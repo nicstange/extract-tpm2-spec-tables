@@ -226,7 +226,7 @@ fn main() {
                                                 }
                                                 print!("{}", &cc[0]);
                                             }
-                                        } if name == "commandCode" {
+                                        } else if name == "commandCode" {
                                             let mut is_first = true;
                                             for cc in re_cc_descr.captures_iter(&descr) {
                                                 if !is_first {
