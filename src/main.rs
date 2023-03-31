@@ -36,7 +36,7 @@ impl LastTable {
     }
 
     fn continue_with(&mut self, table: Table) {
-        assert_eq!(self.table.is_some(), true);
+        assert!(self.table.is_some());
         self.table = Some(table);
     }
 

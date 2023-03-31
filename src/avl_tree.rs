@@ -836,7 +836,7 @@ fn test_insert_delete_same() {
     }
     assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 0);
     assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 0);
-    assert_eq!(t.root.node.is_none(), true);
+    assert!(t.root.node.is_none());
 }
 
 #[test]
@@ -860,7 +860,7 @@ fn test_insert_delete_same_rev() {
     }
     assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 0);
     assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 0);
-    assert_eq!(t.root.node.is_none(), true);
+    assert!(t.root.node.is_none());
 }
 
 #[test]
@@ -922,5 +922,5 @@ fn test_insert_delete_strided() {
     }
     assert_eq!(t.iter(None::<u32>, None::<u32>, |_a| true).count(), 0);
     assert_eq!(t.iter_mut(None::<u32>, None::<u32>, |_a| true).count(), 0);
-    assert_eq!(t.root.node.is_none(), true);
+    assert!(t.root.node.is_none());
 }
