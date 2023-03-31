@@ -46,9 +46,7 @@ impl LastTable {
             Some(prev) => prev,
         };
 
-        if prev.rows() < 1 || next.rows() < 1 {
-            return false;
-        } else if prev.columns() != next.columns() {
+        if prev.rows() < 1 || next.rows() < 1 || prev.columns() != next.columns() {
             return false;
         }
 
@@ -772,10 +770,7 @@ impl OrderedTexts {
             let cur = &self.texts[j];
             let cur_x = &cur.point.x;
             let cur_y = CoordinateWithErr::new(cur.point.y);
-            if new_y > cur_y {
-                i = j;
-                break;
-            } else if new_y == cur_y && new_x < cur_x {
+            if new_y > cur_y || (new_y == cur_y && new_x < cur_x) {
                 i = j;
                 break;
             }
@@ -1396,13 +1391,8 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                                             Some(IntervalBound::Inclusive(*xub))) {
                     let hseg_lb = hseg.get_lb().unwrap();
                     let hseg_ub = hseg.get_ub().unwrap();
-                    let mut found_overlap = true;
-                    if hseg_lb < xlb && hseg_lb.ub + Distance::new(5.) < xlb.lb {
-                        found_overlap = false;
-                    } else if hseg_ub > xub && hseg_ub.lb - Distance::new(5.) > xub.ub {
-                        found_overlap = false;
-                    }
-                    if !found_overlap {
+                    if (hseg_lb < xlb && hseg_lb.ub + Distance::new(5.) < xlb.lb)
+                        || (hseg_ub > xub && hseg_ub.lb - Distance::new(5.) > xub.ub){
                         continue;
                     }
 
