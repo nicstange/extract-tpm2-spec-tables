@@ -203,12 +203,10 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                         assert!(-1 <= sn.bf && sn.bf <= 1);
                         if sn.bf >= 0 {
                             rn.bf -= 1;
+                        } else if rn.bf >= 0 {
+                            rn.bf = orig_s_bf - 2;
                         } else {
-                            if rn.bf >= 0 {
-                                rn.bf = orig_s_bf - 2;
-                            } else {
-                                rn.bf = orig_s_bf + rn.bf - 2;
-                            }
+                            rn.bf = orig_s_bf + rn.bf - 2;
                         }
                         assert!(-2 <= rn.bf && rn.bf <= 1);
 
@@ -251,12 +249,10 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                         assert!(-1 <= sn.bf && sn.bf <= 1);
                         if sn.bf <= 0 {
                             ln.bf += 1;
+                        } else if ln.bf <= 0 {
+                            ln.bf = orig_s_bf + 2;
                         } else {
-                            if ln.bf <= 0 {
-                                ln.bf = orig_s_bf + 2;
-                            } else {
-                                ln.bf = orig_s_bf + ln.bf + 2;
-                            }
+                            ln.bf = orig_s_bf + ln.bf + 2;
                         }
 
                         let lr = mem::replace(&mut ln.right.node, None);
