@@ -828,7 +828,7 @@ impl Table {
         let mut cells = Vec::new();
         cells.resize_with(rows, || {
             let mut row = Vec::new();
-            row.resize_with(columns, || TableCell::new());
+            row.resize_with(columns, TableCell::new);
             row
         });
         let special_row_indices = Vec::from_iter(special_y_indices.iter().rev().map(|i| rows - i));
