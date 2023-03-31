@@ -349,7 +349,7 @@ impl<B: Clone + Ord + 'static, T> IntervalTree<B, T> {
         self.tree.delete(&LowerBoundQuery::new(&key.lb),
                          &|node_key, node_value| {
                              if node_key.interval == *key {
-                                 is_match(&node_key.interval, &node_value)
+                                 is_match(&node_key.interval, node_value)
                              } else {
                                  false
                              }

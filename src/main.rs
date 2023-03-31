@@ -1278,12 +1278,12 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
 
             pdf::content::Op::TextDraw{text} => {
                 check_path_empty(&path)?;
-                pending_text.append(&tj_string_operand_to_string(&text, &current_text_decoder)?);
+                pending_text.append(&tj_string_operand_to_string(text, &current_text_decoder)?);
             },
 
             pdf::content::Op::TextDrawAdjusted{array} => {
                 check_path_empty(&path)?;
-                pending_text.append(&tj_array_operand_to_string(&array, &current_text_decoder)?);
+                pending_text.append(&tj_array_operand_to_string(array, &current_text_decoder)?);
             }
 
             pdf::content::Op::TextFont{name, size: _} => {
