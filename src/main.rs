@@ -301,7 +301,6 @@ fn main() {
             },
             Err(msg) => println!("Failed to process page {}: {}", i, msg),
         };
-        // break;
     }
     last_table.replace(None);
 }
@@ -1309,38 +1308,8 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
         }
     }
 
-    // for (y, segs) in horizontal_segments.segments.iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>) {
-    //     println!("H Segments @{}", y);
-    //     for (i, _) in segs.iter(None, None) {
-    //         println!("\t[{}, {}]", i.get_lb().unwrap(), i.get_ub().unwrap());
-    //     }
-    // }
-
-    // for (x, segs) in vertical_segments.segments.iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>) {
-    //     println!("V Segments @{}", x);
-    //     for (i, _) in segs.iter(None, None) {
-    //         println!("\t[{}, {}]", i.get_lb().unwrap(), i.get_ub().unwrap());
-    //     }
-    // }
-
     let horizontal_groups: OrientedSegmentGroups = horizontal_segments.into();
     let vertical_groups: OrientedSegmentGroups = vertical_segments.into();
-    // for (seg, ys) in horizontal_groups.groups.iter(None::<IntervalBound::<CoordinateWithErr>>,
-    //                                                None::<IntervalBound::<CoordinateWithErr>>) {
-    //     println!("H Segment group [{}, {}]", seg.get_lb().unwrap(), seg.get_ub().unwrap());
-    //     for (y, _) in ys.iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>) {
-    //         println!("\t{}", y);
-    //     }
-    // }
-
-    // for (seg, xs) in vertical_groups.groups.iter(None::<IntervalBound::<CoordinateWithErr>>,
-    //                                             None::<IntervalBound::<CoordinateWithErr>>) {
-    //     println!("V Segment group [{}, {}]", seg.get_lb().unwrap(), seg.get_ub().unwrap());
-    //     for (x, _) in xs.iter(None::<CoordinateWithErr>, None::<CoordinateWithErr>) {
-    //         println!("\t{}", x);
-    //     }
-    // }
-
     let mut tables: IntervalTree<CoordinateWithErr, Table> = IntervalTree::new();
     for (hseg, ys) in horizontal_groups.groups.iter(None::<IntervalBound::<CoordinateWithErr>>,
                                                     None::<IntervalBound::<CoordinateWithErr>>) {
@@ -1434,14 +1403,6 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                 }
                 special_y_indices.push(i);
             }
-
-            // println!("Found Table");
-            // for x in &xs {
-            //     println!("\txstop={}", x);
-            // }
-            // for y in &ys {
-            //     println!("\tystop={}", y);
-            // }
 
             let table = Table::new(xs, ys, special_y_indices);
             let vext = table.vertical_extent();
