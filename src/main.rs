@@ -173,7 +173,7 @@ fn main() {
                                 last_col_header.contains("Comments") || last_col_header.contains("Description")
                                 || last_col_header.contains("Definition") || last_col_header.contains("Requirements")
                                 || last_col_header.contains("Meaning");
-                            for r in (0 + (!is_new_table as usize))..table.rows() {
+                            for r in (!is_new_table as usize)..table.rows() {
                                 for c in 0..(table.columns() - last_col_is_comments as usize) {
                                     if c != 0 {
                                         print!(";");
@@ -262,7 +262,7 @@ fn main() {
                         },
                         TableType::ResponseDef => {
                             let last_col_is_descr = last_col_header.contains("Description");
-                            for r in (0 + (!is_new_table as usize))..table.rows() {
+                            for r in (!is_new_table as usize)..table.rows() {
                                 for c in 0..(table.columns() - last_col_is_descr as usize) {
                                     if c != 0 {
                                         print!(";");
@@ -281,7 +281,7 @@ fn main() {
                         TableType::Defines => {
                             let last_col_is_descr = last_col_header.contains("Description")
                                 || last_col_header.contains("Comments");
-                            for r in (0 + (!is_new_table as usize))..table.rows() {
+                            for r in (!is_new_table as usize)..table.rows() {
                                 for c in 0..(table.columns() - last_col_is_descr as usize) {
                                     if c != 0 {
                                         print!(";");
