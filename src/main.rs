@@ -106,7 +106,7 @@ fn main() {
                                       )").unwrap();
     for p in file.pages() {
         let p = p.unwrap();
-        i = i + 1;
+        i += 1;
         match handle_page(&file, &p) {
             Ok(mut tables) => {
                 if tables.is_empty() {
@@ -1245,12 +1245,10 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
             pdf::content::Op::MoveTextPosition{translation} => {
                 let gs = gs_stack.last_mut().unwrap();
 
-                gs.text_line_matrix.e = translation.x * gs.text_line_matrix.a +
-                    translation.y * gs.text_line_matrix.c +
-                    gs.text_line_matrix.e;
-                gs.text_line_matrix.f = translation.x * gs.text_line_matrix.b +
-                    translation.y * gs.text_line_matrix.d +
-                    gs.text_line_matrix.f;
+                gs.text_line_matrix.e += translation.x * gs.text_line_matrix.a +
+                    translation.y * gs.text_line_matrix.c;
+                gs.text_line_matrix.f += translation.x * gs.text_line_matrix.b +
+                    translation.y * gs.text_line_matrix.d;
 
                 if let Some(t) = pending_text.move_displacement(gs.text_pos()) {
                     texts.push(t);
@@ -1270,8 +1268,8 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
                 check_path_empty(&path)?;
                 let gs = gs_stack.last_mut().unwrap();
 
-                gs.text_line_matrix.e = -gs.text_leading * gs.text_line_matrix.c + gs.text_line_matrix.e;
-                gs.text_line_matrix.f = -gs.text_leading * gs.text_line_matrix.d + gs.text_line_matrix.f;
+                gs.text_line_matrix.e += -gs.text_leading * gs.text_line_matrix.c;
+                gs.text_line_matrix.f += -gs.text_leading * gs.text_line_matrix.d;
 
                 if let Some(t) = pending_text.move_displacement(gs.text_pos()) {
                     texts.push(t);

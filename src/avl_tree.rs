@@ -209,7 +209,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                         }
                         assert!(-1 <= sn.bf && sn.bf <= 1);
                         if sn.bf >= 0 {
-                            rn.bf = rn.bf - 1;
+                            rn.bf -= 1;
                         } else {
                             if rn.bf >= 0 {
                                 rn.bf = orig_s_bf - 2;
@@ -257,7 +257,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                         }
                         assert!(-1 <= sn.bf && sn.bf <= 1);
                         if sn.bf <= 0 {
-                            ln.bf = ln.bf + 1;
+                            ln.bf += 1;
                         } else {
                             if ln.bf <= 0 {
                                 ln.bf = orig_s_bf + 2;
@@ -321,7 +321,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                     }
 
                     assert!(-1 <= n.bf && n.bf <= 1);
-                    n.bf = n.bf - 1;
+                    n.bf -= 1;
                     if n.bf < -1 {
                         let nl = n.left.node.as_ref().unwrap();
                         if nl.bf > 0 {
@@ -343,7 +343,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
                     }
 
                     assert!(-1 <= n.bf && n.bf <= 1);
-                    n.bf = n.bf + 1;
+                    n.bf += 1;
                     if n.bf > 1 {
                         let nr = n.right.node.as_ref().unwrap();
                         if nr.bf < 0 {
@@ -366,7 +366,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         let n = self.node.as_deref_mut().unwrap();
-        n.bf = n.bf + 1;
+        n.bf += 1;
         if n.bf > 1 {
             let nr = n.right.node.as_ref().unwrap();
             let nr_bf = nr.bf;
@@ -387,7 +387,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
     where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
         let n = self.node.as_deref_mut().unwrap();
-        n.bf = n.bf - 1;
+        n.bf -= 1;
         if n.bf < -1 {
             let nl = n.left.node.as_ref().unwrap();
             let nl_bf = nl.bf;
