@@ -667,6 +667,11 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
     }
 }
 
+impl<K: Ord, T, A> Default for AugmentedAVLTree<K, T, A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 pub struct AVLTree<K: Ord, T> {
     tree: AugmentedAVLTree<K, T, ()>,
@@ -709,6 +714,12 @@ impl<K: Ord, T> AVLTree<K, T> {
 
     fn shall_descend(_aux: &()) -> bool {
         true
+    }
+}
+
+impl<K: Ord, T> Default for AVLTree<K, T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

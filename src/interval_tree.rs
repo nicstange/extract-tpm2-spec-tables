@@ -377,6 +377,12 @@ impl<B: Clone + Ord + 'static, T> IntervalTree<B, T> {
     }
 }
 
+impl<B: Clone + Ord + 'static, T> Default for IntervalTree<B, T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 struct IteratorLowerBoundQuery<> {}
 
 impl<B: Ord> PartialEq<LowerBoundKey<B>> for IteratorLowerBoundQuery {
