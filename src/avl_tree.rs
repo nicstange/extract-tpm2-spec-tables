@@ -673,17 +673,17 @@ impl<K: Ord, T, A> AugmentedAVLTree<K, T, A> {
         self.root.delete(key, is_match, shall_descend, update_aux).map(|deleted| deleted.0)
     }
 
-    pub fn iter<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
-        (&'a self, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend)
-         -> AugmentedAVLTreeIterator<'a, QL, QU, K, T, A, ShallDescend>
-    where for<'b> ShallDescend: Fn(&'b A) -> bool {
+    pub fn iter<QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
+        (&self, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend)
+         -> AugmentedAVLTreeIterator<'_, QL, QU, K, T, A, ShallDescend>
+    where for<'a> ShallDescend: Fn(&'a A) -> bool {
         AugmentedAVLTreeIterator::new(&self.root, lb, ub, shall_descend)
     }
 
-    pub fn iter_mut<'a, QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
-        (&'a mut self, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend)
-         -> AugmentedAVLTreeMutIterator<'a, QL, QU, K, T, A, ShallDescend>
-    where for<'b> ShallDescend: Fn(&'b A) -> bool {
+    pub fn iter_mut<QL: PartialOrd<K>, QU: PartialOrd<K>, ShallDescend>
+        (&mut self, lb: Option<QL>, ub: Option<QU>, shall_descend: ShallDescend)
+         -> AugmentedAVLTreeMutIterator<'_, QL, QU, K, T, A, ShallDescend>
+    where for<'a> ShallDescend: Fn(&'a A) -> bool {
         AugmentedAVLTreeMutIterator::new(&mut self.root, lb, ub, shall_descend)
     }
 }
@@ -712,15 +712,15 @@ impl<K: Ord, T> AVLTree<K, T> {
         self.tree.delete(key, is_match, &Self::shall_descend, &Self::update_aux)
     }
 
-    pub fn iter<'a, QL: PartialOrd<K>, QU: PartialOrd<K>>(&'a self, lb: Option<QL>, ub: Option<QU>)
-                                                          -> AVLTreeIterator<'a, QL, QU, K, T> {
+    pub fn iter<QL: PartialOrd<K>, QU: PartialOrd<K>>(&self, lb: Option<QL>, ub: Option<QU>)
+                                                      -> AVLTreeIterator<'_, QL, QU, K, T> {
         AVLTreeIterator{
             it: self.tree.iter(lb, ub, Self::shall_descend),
         }
     }
 
-    pub fn iter_mut<'a, QL: PartialOrd<K>, QU: PartialOrd<K>>(&'a mut self, lb: Option<QL>, ub: Option<QU>)
-                                                              -> AVLTreeMutIterator<'a, QL, QU, K, T> {
+    pub fn iter_mut<QL: PartialOrd<K>, QU: PartialOrd<K>>(&mut self, lb: Option<QL>, ub: Option<QU>)
+                                                          -> AVLTreeMutIterator<'_, QL, QU, K, T> {
         AVLTreeMutIterator{
             it: self.tree.iter_mut(lb, ub, Self::shall_descend),
         }

@@ -366,13 +366,13 @@ impl<B: Clone + Ord + 'static, T> IntervalTree<B, T> {
             .map(|(key, value)| (key.interval, value))
     }
 
-    pub fn iter<'a>(&'a self, lb: Option<IntervalBound<B>>, ub: Option<IntervalBound<B>>)
-                    -> IntervalTreeIterator<'a, B, T> {
+    pub fn iter(&self, lb: Option<IntervalBound<B>>, ub: Option<IntervalBound<B>>)
+                -> IntervalTreeIterator<'_, B, T> {
         IntervalTreeIterator::new(self, lb, ub)
     }
 
-    pub fn iter_mut<'a>(&'a mut self, lb: Option<IntervalBound<B>>, ub: Option<IntervalBound<B>>)
-                        -> IntervalTreeMutIterator<'a, B, T> {
+    pub fn iter_mut(&mut self, lb: Option<IntervalBound<B>>, ub: Option<IntervalBound<B>>)
+                    -> IntervalTreeMutIterator<'_, B, T> {
         IntervalTreeMutIterator::new(self, lb, ub)
     }
 }
