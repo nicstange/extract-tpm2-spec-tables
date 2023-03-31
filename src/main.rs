@@ -494,7 +494,7 @@ impl OrientedSegments {
         let fuse_range_ub = CoordinateWithErr::new(ie.ub + Distance::new(5.));
         while let Some(i0) = intervals.iter(Some(IntervalBound::Inclusive(fuse_range_lb)),
                                             Some(IntervalBound::Inclusive(fuse_range_ub))).next()
-                                         .map(|(i0, ())| i0.clone()) {
+                                         .map(|(i0, ())| *i0) {
             let (i0, ()) = intervals.delete(&i0, &|_, _| true).unwrap();
             let i0b = i0.get_lb().unwrap();
             let i0e = i0.get_ub().unwrap();
@@ -523,7 +523,7 @@ impl OrientedSegments {
         let mut intervals = IntervalTree::new();
         while let Some(u0) = {self.segments.iter(Some(CoordinateWithErr::new(u.lb - u_fuse_distance)),
                                                  Some(CoordinateWithErr::new(u.ub + u_fuse_distance)))
-                              .next().map(|(u0, _)| u0.clone())} {
+                              .next().map(|(u0, _)| *u0)} {
             let (u0, mut intervals0) = self.segments.delete(&u0, &|_, _| true).unwrap();
             u = u.fuse(&u0);
            swap(&mut intervals0, &mut intervals);
@@ -698,7 +698,7 @@ impl Path {
                 PathPoint::Bezier(_, _, _) => (),
             }
         };
-        self.push(PathPoint::Line(to.clone())).unwrap();
+        self.push(PathPoint::Line(*to)).unwrap();
     }
 
     fn extract_oriented_segments(&self,
