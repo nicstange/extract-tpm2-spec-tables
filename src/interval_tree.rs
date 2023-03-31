@@ -449,7 +449,10 @@ impl<'a, B: Clone + Ord, T> Iterator for IntervalTreeIterator<'a, B, T> {
             let item = self.it.next();
             if let Some(query_lb) = &self.lb {
                 if let Some(item) = &item {
-                    if !(LowerBoundQuery::new(query_lb) < UpperBoundQuery::new(&item.0.interval.ub)) {
+                    if !matches!(
+                        LowerBoundQuery::new(query_lb).partial_cmp(&UpperBoundQuery::new(&item.0.interval.ub)).unwrap(),
+                        Ordering::Less
+                    ) {
                         continue;
                     }
                 }
@@ -490,7 +493,10 @@ impl<'a, B: Clone + Ord, T> Iterator for IntervalTreeMutIterator<'a, B, T> {
             let item = self.it.next();
             if let Some(query_lb) = &self.lb {
                 if let Some(item) = &item {
-                    if !(LowerBoundQuery::new(query_lb) < UpperBoundQuery::new(&item.0.interval.ub)) {
+                    if !matches!(
+                        LowerBoundQuery::new(query_lb).partial_cmp(&UpperBoundQuery::new(&item.0.interval.ub)).unwrap(),
+                        Ordering::Less
+                    ) {
                         continue;
                     }
                 }
