@@ -924,7 +924,7 @@ impl PDFTextDecoder {
     fn from_font(f: &Font, file: &impl pdf::object::Resolve) -> Option<Self> {
         if let Some(enc) = f.encoding() {
             if let pdf::encoding::BaseEncoding::IdentityH = enc.base {
-                if enc.differences.len() == 0 {
+                if enc.differences.is_empty() {
                     let tounicodemap = f.to_unicode(file);
                     if let Some(tounicodemap) = tounicodemap {
                         match tounicodemap {
@@ -940,7 +940,7 @@ impl PDFTextDecoder {
             pdf::font::FontType::Type1 | pdf::font::FontType::Type3 | pdf::font::FontType::TrueType => {
                 if let Some(enc) = f.encoding() {
                     if let pdf::encoding::BaseEncoding::WinAnsiEncoding = enc.base {
-                        if enc.differences.len() == 0 {
+                        if enc.differences.is_empty() {
                             return Some(Self::WinAnsiEncoding);
                         }
                     }
