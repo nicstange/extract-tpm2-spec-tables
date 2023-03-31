@@ -191,7 +191,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
 
             Some(sn) => {
                 if sn.bf <= 0 {
-                    return ();
+                    return ;
                 }
                 assert!(sn.bf <= 2);
 
@@ -239,7 +239,7 @@ impl<K: Ord, T, A> NodeRef<K, T, A> {
 
             Some(sn) => {
                 if sn.bf >= 0 {
-                    return ();
+                    return ;
                 }
                 assert!(sn.bf >= -2);
 
