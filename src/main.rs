@@ -720,7 +720,7 @@ impl Path {
                         if ib > ie { swap(&mut ib, &mut ie); }
                         horizontal.insert(u, Distance::new(5.), ib, ie);
 
-                    } else if last_stop.x == last_stop.x {
+                    } else if last_stop.x == stop.x {
                         let u = last_stop.x;
                         let mut ib = last_stop.y;
                         let mut ie = stop.y;
