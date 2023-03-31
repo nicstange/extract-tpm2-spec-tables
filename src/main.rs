@@ -11,7 +11,6 @@ use std::path;
 use std::str;
 use std::str::FromStr;
 use regex::Regex;
-use pdf;
 use pdf::file::File;
 use pdf::font::Font;
 use pdf::object::Page;
