@@ -107,12 +107,12 @@ impl<K: Ord, T, A> Node<K, T, A> {
         }
         if in_lb {
             if let Some(ln) = &self.left.node {
-                i.left = Some(&*ln);
+                i.left = Some(ln);
             }
         }
         if in_ub {
             if let Some(rn) = &self.right.node {
-                i.right = Some(&*rn);
+                i.right = Some(rn);
             }
         }
 
