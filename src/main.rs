@@ -512,7 +512,7 @@ impl OrientedSegments {
 
         let ib = CoordinateWithErr::new(ib);
         let ie = CoordinateWithErr::new(ie);
-        if !(ib < ie) {
+        if ib >= ie {
             return;
         }
 
