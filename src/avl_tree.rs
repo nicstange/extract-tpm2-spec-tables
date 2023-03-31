@@ -67,15 +67,8 @@ impl<K: Ord, T, A> Node<K, T, A> {
     fn do_update_aux<UpdateAux>(&mut self, update_aux: &UpdateAux)
     where for<'a> UpdateAux: Fn(&'a mut A, &'a K, Option<&'a A>, Option<&'a A>)
     {
-        let left_aux = match &self.left.node {
-            None => None,
-            Some(n) => Some(&n.aux),
-        };
-        let right_aux = match &self.right.node {
-            None => None,
-            Some(n) => Some(&n.aux),
-        };
-
+        let left_aux = self.left.node.as_ref().map(|n| &n.aux);
+        let right_aux = self.right.node.as_ref().map(|n| &n.aux);
         update_aux(&mut self.aux, &self.key, left_aux, right_aux);
     }
 
@@ -526,12 +519,7 @@ impl<'a, K: Ord, T, A> NodeIter<'a, K, T, A> {
             None => {
                 match self.key_val.take() {
                     Some(v) => Some(NodeIterVal::Value(v)),
-                    None => {
-                        match self.right.take() {
-                            Some(rn) => Some(NodeIterVal::Child(rn)),
-                            None => None
-                        }
-                    }
+                    None => self.right.take().map(|n| NodeIterVal::Child(n))
                 }
             }
         }
@@ -549,12 +537,7 @@ impl<'a, K: Ord, T, A> NodeIterMut<'a, K, T, A> {
             None => {
                 match self.key_val.take() {
                     Some(v) => Some(NodeIterMutVal::Value(v)),
-                    None => {
-                        match self.right.take() {
-                            Some(rn) => Some(NodeIterMutVal::Child(rn)),
-                            None => None
-                        }
-                    }
+                    None => self.right.take().map(|n| NodeIterMutVal::Child(n))
                 }
             }
         }
