@@ -8,6 +8,7 @@ use std::fmt;
 use std::cell::Cell;
 use std::borrow::Borrow;
 use std::path;
+use std::ptr;
 use std::str;
 use std::str::FromStr;
 use regex::Regex;
@@ -1462,7 +1463,7 @@ fn handle_page(file: &File<Vec<u8>>, p: &Page) -> Result<Vec<Table>, &'static st
         for voverlapping in tables.iter(Some(IntervalBound::Inclusive(*vext.0)),
                                        Some(IntervalBound::Inclusive(*vext.1))) {
             let voverlapping = voverlapping.1;
-            if table as *const _== voverlapping as *const _ {
+            if ptr::eq(table as *const _, voverlapping as *const _) {
                 continue
             }
 
