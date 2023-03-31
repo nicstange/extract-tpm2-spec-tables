@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use core::mem;
 use core::cmp::Ord;
 

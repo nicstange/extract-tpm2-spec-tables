@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use core::cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use crate::avl_tree::{AugmentedAVLTree, AugmentedAVLTreeIterator, AugmentedAVLTreeMutIterator};
 
