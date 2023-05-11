@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2023 SUSE LLC
+// Author: Nicolai Stange <nstange@suse.de>
+
 #![allow(clippy::type_complexity)]
 
 use crate::avl_tree::{AugmentedAVLTree, AugmentedAVLTreeIterator, AugmentedAVLTreeMutIterator};

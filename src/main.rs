@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2023 SUSE LLC
+// Author: Nicolai Stange <nstange@suse.de>
+
 use clap::Parser;
 use extract_tpm2_spec_tables::avl_tree::AVLTree;
 use extract_tpm2_spec_tables::interval_tree::{Interval, IntervalBound, IntervalTree};
